@@ -7,22 +7,18 @@ describe("PrimordialPePe", function() {
 	const TOKEN_ID_2 = 2;
 
 	beforeEach(async function() {
-		// Deploy the MockPlanet contract for testing
 		const MockPlanet = await ethers.getContractFactory("MockPrimordialPlanet");
 		mockPlanet = await MockPlanet.deploy();
 		await mockPlanet.deployed();
 
-		// Deploy the PrimordialPePe contract
 		const PrimordialPePe = await ethers.getContractFactory("PrimordialPePe");
 		ppepe = await PrimordialPePe.deploy();
 		await ppepe.deployed();
 
-		// Set the mockPlanet address in the PrimordialPePe contract
 		await ppepe.setAddresses(mockPlanet.address);
 
 		[owner, addr1, addr2] = await ethers.getSigners();
 
-		// Mint some mockPlanet tokens for testing
 		await mockPlanet.mint(owner.address);
 		await mockPlanet.mint(owner.address);
 
@@ -56,7 +52,7 @@ describe("PrimordialPePe", function() {
         }
 
         await ppepe.stakePlanetByIds(planetIds);
-        await ethers.provider.send("evm_increaseTime", [86400]); // Increase time by 1 day
+        await ethers.provider.send("evm_increaseTime", [86400]);
         await ethers.provider.send("evm_mine");
         await ppepe.claimAllRewards();
         await ppepe.unstakeAll();
@@ -100,8 +96,8 @@ describe("PrimordialPePe", function() {
 	it("should claim rewards by IDs", async function() {
 		await mockPlanet.approve(ppepe.address, TOKEN_ID_1);
 		await ppepe.stakePlanetByIds([TOKEN_ID_1]);
-		await ethers.provider.send("evm_increaseTime", [86400]); // Increase time by 1 day
-		await ethers.provider.send("evm_mine"); // Mine the next block
+		await ethers.provider.send("evm_increaseTime", [86400]);
+		await ethers.provider.send("evm_mine");
 		await ppepe.claimRewardsByIds([TOKEN_ID_1]);
 		expect(await ppepe.balanceOf(owner.address)).to.be.above(0);
 	});
@@ -110,8 +106,8 @@ describe("PrimordialPePe", function() {
 		await mockPlanet.approve(ppepe.address, TOKEN_ID_1);
 		await mockPlanet.approve(ppepe.address, TOKEN_ID_2);
 		await ppepe.stakePlanetByIds([TOKEN_ID_1, TOKEN_ID_2]);
-		await ethers.provider.send("evm_increaseTime", [86400]); // Increase time by 1 day
-		await ethers.provider.send("evm_mine"); // Mine the next block
+		await ethers.provider.send("evm_increaseTime", [86400]);
+		await ethers.provider.send("evm_mine");
 		await ppepe.claimAllRewards();
 		expect(await ppepe.balanceOf(owner.address)).to.be.above(0);
 	});
