@@ -11,6 +11,12 @@
         :accountAddress="accountAddress" 
         :ethBalance="balance" 
         :ppepeBalance="ppepeBalance"
+        :pepeBalance="pepeBalance"
+        :shibBalance="shibBalance"
+        :rawPpepeBalance="rawPpepeBalance"
+        :rawPepeBalance="rawPepeBalance"
+        :rawPndcBalance="rawPndcBalance"
+        :rawShibBalance="rawShibBalance"
         @connect="connectWallet" 
       />
       <div>
@@ -87,27 +93,34 @@ export default {
   },
   data() {
     return {
+      rawPpepeBalance: null,
+      rawPepeBalance: null,
+      rawPndcBalance: null,
+      rawShibBalance: null,
       accountAddress: null,
       balance: null,
       ppepeBalance: null,
       pepeBalance: null,
-      pndcBalance: null,
+      shibBalance: null,
       networkName: null,
       networkIcon: null,
       contractAddresses: {
         mainnet: {
           pepe: '0x6982508145454ce325ddbe47a25d4ec3d2311933',
-          pndc: '0x423f4e6138E475D85CF7Ea071AC92097Ed631eea',
+          pond: '0x423f4e6138E475D85CF7Ea071AC92097Ed631eea',
+          shib: '0x11541e990036ec13D521d584F098a83bD0F4BFC3',
           ppepe: '0x98830a6cc6f8964cec4ffd65f19edebba6fef865'
         },
         sepolia: {
-          pepe: '0x2BddD10ed278b9420519D7F00aa6989486482764',
-          pndc: '0x2BddD10ed278b9420519D7F00aa6989486482764'
+          pepe: '0x27dF660eE7D634401A37de335946472B8928A10E',
+          shib: '0xA0DB56d00465c2665acD333A848C5BDEF9D8FD19',
+          ppepe: '0x2cD6B2b4f4D9fA59f8E9638c00F5902fD1d9afbc'
         }
       },
       currentContractAddresses: {
         pepe: null,
-        pndc: null,
+        pond: null,
+        shib: null,
         ppepe: null
       },
       hovering: false,
@@ -117,9 +130,7 @@ export default {
   methods: {
     async addToMetamask() {
     try {
-        // Check if Ethereum provider exists
         if (typeof window.ethereum !== 'undefined') {
-            // Use Metamask plugin to prompt the user to add the token
             const wasAdded = await window.ethereum.request({
                 method: 'wallet_watchAsset',
                 params: {
@@ -150,7 +161,7 @@ export default {
       this.balance = null;
       this.ppepeBalance = null;
       this.pepeBalance = null;
-      this.pndcBalance = null;
+      this.shibBalance = null;
     },
     formatBalance(balance) {
       return parseFloat(balance).toFixed(2);
@@ -202,14 +213,14 @@ export default {
           }
 
 
-          const pndcContract = new Contract(this.currentContractAddresses.pndc, ERC20_ABI, provider);
+          const shibContract = new Contract(this.currentContractAddresses.shib, ERC20_ABI, provider);
           try {
-            const pndcTokenBalance = await pndcContract.balanceOf(this.accountAddress);
-            console.log("Raw PNDC balance:", pndcTokenBalance.toString());
-            this.pndcBalance = this.abbreviateNumber(formatEther(pndcTokenBalance));
+            const shibTokenBalance = await shibContract.balanceOf(this.accountAddress);
+            console.log("Raw SHIB balance:", shibTokenBalance.toString());
+            this.shibBalance = this.abbreviateNumber(formatEther(shibTokenBalance));
           } catch (error) {
-            console.error("Error fetching PNDC balance:", error);
-            this.pndcBalance = "0";
+            console.error("Error fetching SHIB balance:", error);
+            this.shibBalance = "0";
           }
           
           const ppepeContract = new Contract(this.currentContractAddresses.ppepe, ERC20_ABI, provider);
@@ -249,7 +260,6 @@ export default {
       });
     },
 
-
     async updateBalance() {
       const provider = new BrowserProvider(window.ethereum);
 
@@ -258,12 +268,15 @@ export default {
         params: [this.accountAddress, 'latest']
       });
       this.balance = this.formatBalance(formatEther(weiBalance));
-
+      console.log(`Updated Raw Balances: PPEPE: ${this.rawPpepeBalance}, PEPE: ${this.rawPepeBalance}, SHIB: ${this.rawShibBalance}`);
+      
       const pepeContract = new Contract(this.currentContractAddresses.pepe, ERC20_ABI, provider);
       try {
         const pepeTokenBalance = await pepeContract.balanceOf(this.accountAddress);
+        this.rawPepeBalance = formatEther(pepeTokenBalance);
+        this.pepeBalance = this.abbreviateNumber(this.rawPepeBalance);
         console.log("Raw PEPE balance:", pepeTokenBalance.toString());
-        this.pepeBalance = this.formatBalance(formatEther(pepeTokenBalance));
+        //this.pepeBalance = this.formatBalance(formatEther(pepeTokenBalance));
       } catch (error) {
         console.error("Error fetching PEPE balance:", error);
         this.pepeBalance = "0";
@@ -272,11 +285,37 @@ export default {
       const pndcContract = new Contract(this.currentContractAddresses.pndc, ERC20_ABI, provider);
       try {
         const pndcTokenBalance = await pndcContract.balanceOf(this.accountAddress);
+        this.rawPndcBalance = formatEther(pndcTokenBalance);
+        this.pndcBalance = this.abbreviateNumber(this.rawPndcBalance);
         console.log("Raw PNDC balance:", pndcTokenBalance.toString());
         this.pndcBalance = this.formatBalance(formatEther(pndcTokenBalance));
       } catch (error) {
         console.error("Error fetching PNDC balance:", error);
         this.pndcBalance = "0";
+      }
+
+      const shibContract = new Contract(this.currentContractAddresses.shib, ERC20_ABI, provider);
+      try {
+        const shibTokenBalance = await shibContract.balanceOf(this.accountAddress);
+        this.rawShibBalance = formatEther(shibTokenBalance);
+        this.shibBalance = this.abbreviateNumber(this.rawShibBalance);
+        console.log("Raw SHIB balance:", shibTokenBalance.toString());
+        this.shibBalance = this.formatBalance(formatEther(shibTokenBalance));
+      } catch (error) {
+        console.error("Error fetching SHIB balance:", error);
+        this.shibBalance = "0";
+      }
+
+      const ppepeContract = new Contract(this.currentContractAddresses.ppepe, ERC20_ABI, provider);
+      try {
+        const ppepeTokenBalance = await ppepeContract.balanceOf(this.accountAddress);
+        this.rawPpepeBalance = formatEther(ppepeTokenBalance);
+        this.ppepeBalance = this.abbreviateNumber(this.rawPpepeBalance);
+        console.log("Raw PPEPE balance:", ppepeTokenBalance.toString());
+        this.ppepeBalance = this.formatBalance(formatEther(ppepeTokenBalance));
+      } catch (error) {
+        console.error("Error fetching PPEPE balance:", error);
+        this.ppepeBalance = "0";
       }
 
     },
@@ -297,7 +336,7 @@ export default {
         default:
           this.networkName = "Unknown Network";
           this.currentContractAddresses.pepe = null;
-          this.currentContractAddresses.pndc = null;
+          this.currentContractAddresses.shib = null;
       }
     }
   },
@@ -328,7 +367,7 @@ export default {
       });
 
 
-      this.getNetworkVersion();  // Fetch the current network version
+      this.getNetworkVersion();
     }
   },
   computed: {

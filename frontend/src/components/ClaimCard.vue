@@ -38,7 +38,7 @@ export default {
         require('@/assets/planet_4.mp4'),
         require('@/assets/planet_5.mp4'),
         require('@/assets/planet_6.mp4'),
-        require('@/assets/planet_7.mp4'), // add 3 more for an even ten
+        require('@/assets/planet_7.mp4'),
       ],
       selectedVideo: '',
       buttonText: 'Claim',

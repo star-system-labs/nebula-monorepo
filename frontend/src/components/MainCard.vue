@@ -32,7 +32,7 @@
         }" 
         class="border-custom-blue w-full h-10 flex items-center justify-center px-2 sm:px-8 py-2 text-xs sm:text-base rounded-lg cursor-pointer transition-colors ease-in-out duration-300 hover:bg-button-hover active:bg-button-active"
       >
-        Stake
+        Earn
       </button>
     </div>
 
@@ -50,10 +50,18 @@
       </div>
       <div v-if="selectedCard === 'stake'" class="w-full">
         <StakeCard
+            v-if="selectedCard === 'stake'"
             :accountAddress="accountAddress"
             :ppepeBalance="ppepeBalance"
             :pepeBalance="pepeBalance"
-            :pondBalance="pndcBalance"
+            :shibBalance="shibBalance"
+            :selectedToken="selectedToken"
+            :setSelectedToken="setSelectedToken"
+            :selectedTokenBalance="selectedTokenBalance"
+            :rawPpepeBalance="rawPpepeBalance"
+            :rawPepeBalance="rawPepeBalance"
+            :rawPndcBalance="rawPndcBalance"
+            :rawShibBalance="rawShibBalance"
             @connect="$emit('connect')"
             />
     </div>
@@ -74,7 +82,7 @@
     },
     data() {
       return {
-        selectedCard: 'mine',  // Default option
+        selectedCard: 'mine',
         showCopeSequence: false
       };
     },
@@ -95,7 +103,11 @@
         type: String,
         default: "0.00"
       },
-      pndcBalance: {
+      pondBalance: {
+        type: String,
+        defaults: "0.00"
+      },
+      shibBalance: {
         type: String,
         default: "0.00"
       }

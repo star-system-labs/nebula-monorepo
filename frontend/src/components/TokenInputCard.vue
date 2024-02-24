@@ -66,13 +66,22 @@ export default {
     quote: {
       type: String,
       default: null
-    }
+    },
+    isToken: {
+    type: Boolean,
+    default: false
+  },
+  rawBalance: {
+    type: String,
+    default: '0'
+  },
   },
   methods: {
     handleMaxClicked() {
-      this.$refs.amountInput.amount = this.balance;
-      this.emitAmount(this.balance);
-    },
+  const maxAmount = this.isToken ? this.rawBalance : this.balance;
+  this.$refs.amountInput.setAmount(maxAmount);
+  this.emitAmount(maxAmount);
+},
     emitAmount(value) {
       this.$emit('amountChanged', value);
     }

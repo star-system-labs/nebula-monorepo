@@ -95,10 +95,8 @@ export default {
     const receipt = await tx.wait();
 
     if (receipt.status === 0) {
-      // Transaction failed
       this.$root.$refs.notificationCard.showNotification("error");
     } else if (receipt.status === 1) {
-      // Transaction succeeded
       const minedEvent = receipt.events?.find(e => e.event === "PPEPE Mined Bruh");
       const quoteValue = minedEvent.args.quote;
       this.$emit('mined');
@@ -107,7 +105,6 @@ export default {
     }
   } catch (error) {
     if (error.code === 9001) {
-      // User rejected the transaction
       console.error('Transaction was rejected by the user, and its over 9000');
     } else {
       console.error('Mining failed: Its over 9000, ', error.message || error);

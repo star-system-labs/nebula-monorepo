@@ -1,4 +1,4 @@
-# starsystemlabs-frontend
+# nebula-frontend
 
 ## Project setup
 ```

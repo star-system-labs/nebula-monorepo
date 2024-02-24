@@ -31,22 +31,26 @@ export default {
     };
   },
   methods: {
-    emitInputValue(event) {
-      this.$emit('inputChanged', parseFloat(event.target.value));
-    }
+  setAmount(value) {
+    this.amount = value;
+    this.emitInputValue({ target: { value: this.amount } });
+  },
+  emitInputValue(event) {
+    this.$emit('inputChanged', event.target.value);
   }
+}
 }
 </script>
 
 <style scoped>
 input {
   max-width: 240px;
-  -webkit-appearance: textfield; /* for chrome, safari */
-  -moz-appearance: textfield; /* for firefox */
+  -webkit-appearance: textfield;
+  -moz-appearance: textfield;
 }
 
 input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
-  -webkit-appearance: none; /* for chrome, safari */
+  -webkit-appearance: none;
   margin: 0;
 }
 </style>

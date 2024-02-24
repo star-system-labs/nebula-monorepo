@@ -1,55 +1,61 @@
 <template>
+ <div class="flex flex-col items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-50 p-5 rounded-xl w-full mx-auto">
   <div class="flex flex-col items-center font-origin w-full text-center">
-    <TokenInputCard
-    class="mb-4 text-teal"
-    currency="PPePe"
-    label="You Stake:"
-    :currencyLogo="require('@/assets/ppepe.png')"
-    :balance="ppepeBalance"
-    :isEditable="false"
-    :isMaxSelectable="false"
-    @amountChanged="handleAmountChanged"
-    :accountAddress="accountAddress"
-    />
-
-    <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mb-6"/>
-    <button v-else @click="handleStakeClick('ppepe')" class="bg-gradient-to-r from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6">
-      <SpinnerSVG v-if="loadingPpepe" />
-      <span v-else>{{ stakeButtonTextPpepe }}</span>
-    </button>
-
-    <TokenInputCard
-    currency="PePe"
-    label="You Stake:"
-    :currencyLogo="require('@/assets/pepe.png')"
-    class="mb-4 text-teal"
-    :balance="pepeBalance"
-    :isEditable="false"
-    :isMaxSelectable="false"
-    @amountChanged="handleAmountChanged"
-    :accountAddress="accountAddress"
-    />
-    <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mb-6"/>
-    <button v-else @click="handleStakeClick('pepe')"  class="bg-gradient-to-r from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6">
-      <SpinnerSVG v-if="loadingPepe" />
-      <span v-else>{{ stakeButtonTextPepe }}</span>
-    </button>
+    <div class="flex flex-col items-center font-origin w-full text-center">
+    <div class="toggle-switch flex cursor-pointer mb-4 rounded-xl overflow-hidden border-2 border-custom-blue shadow-md relative">
+      <div class="absolute left-0 top-0 h-full w-1/2 bg-button-active rounded-xl transition-all duration-300"
+           :class="selectedOption === 'Staking' ? 'left-0' : 'left-1/2'"></div>
+      <div 
+        class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10"
+        :class="selectedOption === 'Staking' ? 'text-yellow-300' : 'text-custom-blue-inactive'"
+        @click="setSelectedOption('Staking')">
+        Staking
+      </div>
+      <div 
+        class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10"
+        :class="selectedOption === 'Vesting' ? 'text-yellow-300' : 'text-custom-blue-inactive'"
+        @click="setSelectedOption('Vesting')">
+        Vesting
+      </div>
+    </div>
+    <div class="currency-toggle flex cursor-pointer mb-4 rounded-xl overflow-hidden border-2 border-custom-blue shadow-md relative">
+      <div class="absolute left-0 top-0 h-full w-1/3 bg-button-active rounded-xl transition-all duration-300"
+           :style="toggleStyle"></div>
+      <div v-for="(currency, index) in currencies"
+           :key="currency"
+           :class="selectedToken === currency ? 'text-yellow-300' : 'text-custom-blue-inactive'"
+           class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10"
+           @click.stop="setSelectedCurrency(currency)">
+        <img :src="currencyLogos[index]" alt="Currency Logo" class="w-6 h-6 rounded-full mr-2">{{ currency }}
+      </div>
+     </div>
+    </div>
+   </div>
 
     <TokenInputCard
-    currency="Pond"
-    label="You Stake:"
-    :currencyLogo="require('@/assets/pond.png')"
-    class="mb-4 text-teal"
-    :balance="pondBalance"
-    :isEditable="false"
-    :isMaxSelectable="false"
-    @amountChanged="handleAmountChanged"
-    :accountAddress="accountAddress"
+      class="w-[350px] mb-4 text-teal font-origin"
+      :isToken="true"
+      :rawBalance="selectedToken === 'PPePe' ? rawPpepeBalance : selectedToken === 'PePe' ? rawPepeBalance : selectedToken === 'Shib' ? rawShibBalance : '0'"
+  :currency="selectedToken"
+  :balance="selectedTokenBalance"
+      label="You Stake:"
+      :currencyLogo="selectedCurrencyLogo"
+      :tokenName="setSelectedCurrency"
+      :isEditable="true"
+      :isMaxSelectable="true"
+      @amountChanged="handleAmountChanged"
+      :accountAddress="accountAddress"
     />
+
+    <div v-if="selectedOption === 'Vesting'" class="my-4 flex flex-col items-center">
+      <input type="range" min="30" max="360" step="30" v-model="vestingPeriod" class="range range-primary w-full max-w-xs" @input="adjustVestingPeriod">
+      <div class="text-teal font-origin mt-2">Vesting Period: {{ formattedVestingPeriod }}</div>
+    </div>
+
     <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mb-6"/>
-    <button v-else @click="handleStakeClick('pond')"  class="bg-gradient-to-r from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-2">
-      <SpinnerSVG v-if="loadingPond" />
-      <span v-else>{{ stakeButtonTextPond }}</span>
+    <button v-else @click="handleStakeClick" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6">
+      <SpinnerSVG v-if="loading" />
+      <span v-else>{{ stakeButtonText }}</span>
     </button>
   </div>
 </template>
@@ -67,90 +73,159 @@ export default {
     SpinnerSVG
   },
   props: {
+    rawPpepeBalance: String,
+  rawPepeBalance: String,
+  rawShibBalance: String,
+    ppepeBalance: String,
+    // { 
+    //   type: String,
+    //   default: "0.00"
+    // },
+    pepeBalance: String,
+    shibBalance: String,
     accountAddress: {
       type: String,
-      default: "0.00"
+      default: null
     },
-    ppepeBalance: {
-      type: String,
-      default: "0.00"
-    },
-    pepeBalance: {
-      type: String,
-      default: "0.00"
-    },
-    pondBalance: {
-      type: String,
-      default: "0.00"
-    }
   },
   data() {
     return {
+      contractAddresses: {
+      'PPePe': '0xBD80F58B727a85658BeEB3712c25bDd42d7Bff72',
+      'PePe': '0xFe20461D6Bdacf74bDaF3D88643c0679B181F627',
+      'Shib': '0x2842844B0B08A859CA42FA9B1DA34cF348b8CDb4'
+      },
+      vestingContractAddresses: {
+      'PPePe': '0x282E7FD85AB9d38C2a89194Be4E3cE1017C41C2E',
+      'PePe': '0x49ad849920cB44963fF348E32bFA3C6ee8eFb9CF',
+      'Shib': '0xCa617C39e4F4C3fB87b3250A73Eec5Def35ed430'
+      },
+      vestingPeriod: 30,
+      selectedToken: 'PPePe',
+      loading: false,
+      stakeButtonText: 'Stake',
+      currencies: ['PPePe', 'PePe', 'Shib'],
+      currencyLogos: [
+        require('@/assets/ppepe.png'),
+        require('@/assets/pepe.png'),
+        require('@/assets/shib.png')
+      ],
       enteredAmountData: '0.00',
       walletBalanceData: '0.00',
-
-      PEPE_ADDRESS: '0xe9C5A35BefC36E8B35B93470C034caf0a8E94308',
-      POND_ADDRESS: '0x11541e990036ec13D521d584F098a83bD0F4BFC3',
-      PPEPE_ADDRESS: '0x11541e990036ec13D521d584F098a83bD0F4BFC3',
-
-      stakeButtonClickCountPpepe: 0,
-      stakeButtonTextPpepe: 'Stake PPePe',
-      loadingPpepe: false,
-
-      stakeButtonClickCountPepe: 0,
-      stakeButtonTextPepe: 'Stake PePe',
-      loadingPepe: false,
-
-      stakeButtonClickCountPond: 0,
-      stakeButtonTextPond: 'Stake Pond',
-      loadingPond: false,
-      
-      alternativeNames: {
-      ppepe: 'PPEPE',
-      pepe: 'PEPE',
-      pond: 'PNDC'
-    }
+      selectedOption: 'Staking',
     };
   },
   methods: {
-    connect() {
-      console.log("Button clicked!");
-      this.$emit('connect');
+    adjustVestingPeriod() {
+      if (this.vestingPeriod > 330) {
+        this.vestingPeriod = 365;
+      }
+      console.log("Vesting Period Updated: ", this.vestingPeriod);
+    },
+    setSelectedOption(option) {
+      this.selectedOption = option;
+      console.log("Selected Option: ", this.selectedOption);
+  
+      if (option === 'Staking') {
+        this.stakeButtonText = 'Staking';
+        console.log("Selected Contract Address: ", this.selectedContractAddress);
+      } else {
+        this.stakeButtonText = 'Vesting';
+        console.log("Selected Contract Address: ", this.selectedVestingContractAddress);
+      }
+    },
+    setSelectedCurrency(currency) {
+      this.selectedToken = currency;
+      this.selectedTokenBalance;
     },
     handleAmountChanged(value) {
-      console.log("Amount Changed: ", value)
+      console.log(`Amount Changed in StakeCard:`, value);
       this.enteredAmountData = value;
-      this.walletBalanceData = this.ethBalance;
+      this.walletBalanceData = this.selectedTokenBalance;
     },
-    handleStakeClick(token) {
-      if (token === 'ppepe') {
-        this.stakeButtonClickCountPpepe += 1;
-        this.updateStakeButtonText('ppepe', this.stakeButtonClickCountPpepe);
-      } else if (token === 'pepe') {
-        this.stakeButtonClickCountPepe += 1;
-        this.updateStakeButtonText('pepe', this.stakeButtonClickCountPepe);
-      } else if (token === 'pond') {
-        this.stakeButtonClickCountPond += 1;
-        this.updateStakeButtonText('pond', this.stakeButtonClickCountPond);
+    handleStakeClick() {
+      let contractAddress;
+      if (this.selectedOption === 'Staking') {
+        contractAddress = this.selectedContractAddress;
+        contractAddress.stake(this.enteredAmountData)
+      } else if (this.selectedOption === 'Vesting') {
+        contractAddress = this.selectedVestingContractAddress;
+        contractAddress.vest(this.enteredAmountData, this.vestingPeriod)
       }
+      console.log("Selected Token: ", this.selectedToken);
+      console.log("Contract Address: ", contractAddress);
     },
-    updateStakeButtonText(token, count) {
-      const commonResponses = [
-        'Coming Soon',
-        'You are Too Early',
-        '2 Earl Lee',
-        `${this.alternativeNames[token]} Rewards Incoming!!`,
-        'COPE HARDER'
-      ];
-
-      if (count <= commonResponses.length) {
-        this[`stakeButtonText${token.charAt(0).toUpperCase() + token.slice(1)}`] = commonResponses[count - 1];
-      } else {
-        this[`loading${token.charAt(0).toUpperCase() + token.slice(1)}`] = true;
-      }
+    updateWalletBalance() {
+      this.walletBalanceData = this.selectedTokenBalance;
     }
   },
+  computed: {
+    selectedVestingContractAddress() {
+      console.log("Vesting Contract Address: ", this.vestingContractAddresses[this.selectedToken]);
+      return this.vestingContractAddresses[this.selectedToken];
+    },
+    selectedContractAddress() {
+      console.log("Staking Contract Address: ", this.contractAddresses[this.selectedToken]);
+      return this.contractAddresses[this.selectedToken];
+    },
+    formattedVestingPeriod() {
+      if (this.vestingPeriod === 365) {
+        return "12 months 365 days";
+      }
+      const months = Math.floor(this.vestingPeriod / 30);
+      const days = this.vestingPeriod;
+      let monthString = months === 1 ? "month" : "months";
+      let dayString = days === 1 ? "day" : "days";
+      let formattedString = `${months} ${monthString} ${days} ${dayString}`;
+      return formattedString;
+    },
+    selectedCurrencyLogo() {
+      let index = this.currencies.indexOf(this.selectedToken);
+      return this.currencyLogos[index];
+    },
+    selectedTokenBalance() {
+      console.log("Selected Token: ", this.selectedToken);
+      switch (this.selectedToken) {
+        case 'PPePe':
+          console.log("PPePe Balance: ", this.ppepeBalance);
+          console.log("rawPpepeBalance:", this.rawPepeBalance);
+          return this.ppepeBalance;
+        case 'PePe':
+          console.log("PePe Balance: ", this.pepeBalance);
+          console.log("rawPepeBalance:", this.rawPepeBalance);
+          return this.pepeBalance;
+        case 'Shib':
+          console.log("Shib Balance: ", this.shibBalance);
+          console.log("rawShibBalance:", this.rawShibBalance);
+          return this.shibBalance;
+        default:
+          return '0.00';
+      }
+    },
+    toggleStyle() {
+      let index = this.currencies.indexOf(this.selectedToken);
+      let percentage = 33.33 * index;
+      return { left: `${percentage}%` };
+    },
+  },
+  mounted() {
+    this.walletBalanceData = this.selectedTokenBalance;
+  },
   watch: {
+    rawPpepeBalance(newVal) {
+      console.log("New rawPpepeBalance:", newVal);
+    },
+    rawPepeBalance(newVal) {
+      console.log("New rawPepeBalance:", newVal);
+    },
+    rawShibBalance(newVal) {
+      console.log("New rawShibBalance:", newVal);
+    },
+    vestingPeriod(newValue) {
+      if (newValue > 330) {
+        this.vestingPeriod = 365;
+      }
+    },
     enteredAmountData(newVal) {
       console.log("enteredAmountData updated: ", newVal);
     },
@@ -158,8 +233,43 @@ export default {
       console.log("walletBalanceData updated: ", newVal)
     },
   },
-  mounted() {
-    this.walletBalanceData = this.ethBalance;
-  },
+  created() {
+  console.log("StakeCard raw balances:", this.rawPpepeBalance, this.rawPepeBalance, this.rawShibBalance);
+},
 };
 </script>
+
+<style scoped>
+.range {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 2px;
+  background: #131820;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #0751bf;
+  cursor: pointer;
+  margin-left: 0;
+}
+
+.range::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #0751bf;
+  cursor: pointer;
+  margin-left: 0;
+  border: none;
+}
+</style>
+

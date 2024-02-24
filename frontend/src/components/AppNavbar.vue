@@ -22,7 +22,7 @@
 
 <script>
 export default {
-  props: ['accountAddress', 'networkIcon', 'balance', 'pepeBalance', 'pndcBalance', 'networkName'],
+  props: ['accountAddress', 'networkIcon', 'balance', 'pepeBalance', 'shibBalance', 'networkName'],
   computed: {
   shortenedAddress() {
     if (this.accountAddress) {
@@ -43,7 +43,7 @@ export default {
     return this.pepeBalance || "0";
   },
   formattedPndcBalance() {
-    return this.pndcBalance || "0";
+    return this.shibBalance || "0";
   }
 },
   name: 'AppNavbar'
