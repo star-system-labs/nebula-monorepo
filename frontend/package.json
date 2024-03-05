@@ -12,7 +12,7 @@
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/contracts": "^5.7.0",
     "core-js": "^3.8.3",
-    "ethers": "^6.7.1",
+    "ethers": "^6.11.1",
     "postcss-import": "^15.1.0",
     "vue": "^3.2.13",
     "vuex": "^4.0.2"

@@ -62,6 +62,7 @@
             :rawPepeBalance="rawPepeBalance"
             :rawPndcBalance="rawPndcBalance"
             :rawShibBalance="rawShibBalance"
+            :contract-addresses="currentContractAddresses"
             @connect="$emit('connect')"
             />
     </div>
@@ -87,6 +88,7 @@
       };
     },
     props: {
+      contractAddresses: Object,
       accountAddress: {
         type: String,
         default: null
@@ -110,7 +112,19 @@
       shibBalance: {
         type: String,
         default: "0.00"
-      }
+      },
+      rawPpepeBalance: {
+        type: String,
+        defaults: "0.00"
+      },
+      rawPepeBalance: {
+        type: String,
+        defaults: "0.00"
+      },
+      rawShibBalance: {
+        type: String,
+        defaults: "0.00"
+      },
     },
     methods: {
       setSelectedCard(card) {
@@ -122,6 +136,7 @@
       }
     },
     mounted() {
+      console.log("Contract Addresses:", this.contractAddresses);
       const savedCard = localStorage.getItem('selectedCard');
       if (savedCard) {
         this.selectedCard = savedCard;
