@@ -159,7 +159,7 @@ export default {
     async handleStakeClick() {
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = provider.getSigner();
+        const signer = await provider.getSigner();
 
         const networkAddresses = this.contractAddresses[this.currentNetwork];
         const tokenContractAddress = networkAddresses[this.selectedToken.toLowerCase()];
