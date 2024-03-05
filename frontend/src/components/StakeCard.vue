@@ -64,6 +64,10 @@
 import ConnectWalletButton from './ConnectWalletButton.vue';
 import TokenInputCard from './TokenInputCard.vue';
 import SpinnerSVG from './SpinnerSVG.vue';
+import LPStakingABI from '../ABI/LPStakingABI.json';
+import TokenABI from '../ABI/TokenABI.json';
+import { ethers } from 'ethers';
+let provider;
 
 export default {
   name: 'StakeCard',
@@ -74,13 +78,9 @@ export default {
   },
   props: {
     rawPpepeBalance: String,
-  rawPepeBalance: String,
-  rawShibBalance: String,
+    rawPepeBalance: String,
+    rawShibBalance: String,
     ppepeBalance: String,
-    // { 
-    //   type: String,
-    //   default: "0.00"
-    // },
     pepeBalance: String,
     shibBalance: String,
     accountAddress: {
@@ -91,6 +91,20 @@ export default {
   data() {
     return {
       contractAddresses: {
+      mainnet: {
+        pepe: '0x6982508145454ce325ddbe47a25d4ec3d2311933',
+        pond: '0x423f4e6138E475D85CF7Ea071AC92097Ed631eea',
+        shib: '0x11541e990036ec13D521d584F098a83bD0F4BFC3',
+        ppepe: '0x98830a6cc6f8964cec4ffd65f19edebba6fef865'
+      },
+      sepolia: {
+        pepe: '0x27dF660eE7D634401A37de335946472B8928A10E',
+        shib: '0xA0DB56d00465c2665acD333A848C5BDEF9D8FD19',
+        ppepe: '0x2cD6B2b4f4D9fA59f8E9638c00F5902fD1d9afbc'
+      }
+    },
+    currentNetwork: 'mainnet',
+      stakingcontractAddresses: {
       'PPePe': '0xBD80F58B727a85658BeEB3712c25bDd42d7Bff72',
       'PePe': '0xFe20461D6Bdacf74bDaF3D88643c0679B181F627',
       'Shib': '0x2842844B0B08A859CA42FA9B1DA34cF348b8CDb4'
@@ -128,7 +142,7 @@ export default {
   
       if (option === 'Staking') {
         this.stakeButtonText = 'Staking';
-        console.log("Selected Contract Address: ", this.selectedContractAddress);
+        console.log("Selected Contract Address: ", this.selectedStakingContractAddress);
       } else {
         this.stakeButtonText = 'Vesting';
         console.log("Selected Contract Address: ", this.selectedVestingContractAddress);
@@ -143,17 +157,49 @@ export default {
       this.enteredAmountData = value;
       this.walletBalanceData = this.selectedTokenBalance;
     },
-    handleStakeClick() {
-      let contractAddress;
-      if (this.selectedOption === 'Staking') {
-        contractAddress = this.selectedContractAddress;
-        contractAddress.stake(this.enteredAmountData)
-      } else if (this.selectedOption === 'Vesting') {
-        contractAddress = this.selectedVestingContractAddress;
-        contractAddress.vest(this.enteredAmountData, this.vestingPeriod)
+    async handleStakeClick() {
+      try {
+        provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = provider.getSigner();
+        const networkAddresses = this.contractAddresses[this.currentNetwork];
+        const tokenContractAddress = networkAddresses[this.selectedToken.toLowerCase()];
+        if (!tokenContractAddress) {
+          console.error(`No contract address found for token: ${this.selectedToken}`);
+          return;
+        }
+        console.log("Selected token:", this.selectedToken);
+        const tokenContract = new ethers.Contract(tokenContractAddress, TokenABI, signer);
+        console.log("Token contract address:", this.contractAddresses[this.selectedToken]);
+        const stakingContractAddress = this.stakingcontractAddresses[this.selectedToken];
+        console.log("Staking contract address:", this.stakingcontractAddresses[this.selectedToken]);
+        const stakingContract = new ethers.Contract(stakingContractAddress, LPStakingABI, signer);
+        // eslint-disable-next-line no-undef
+        const amountInWei = BigInt(this.enteredAmountData) * BigInt(10 ** 18);
+
+        const approveTx = await tokenContract.approve(stakingContractAddress, amountInWei.toString());
+        await approveTx.wait();
+
+        console.log("Tokens approved for staking");
+
+        if (this.selectedOption === 'Staking') {
+          const stakeTx = await stakingContract.stakeLPToken(amountInWei.toString());
+          await stakeTx.wait();
+          console.log("Tokens staked successfully");
+        } else if (this.selectedOption === 'Vesting') {
+          let contractAddress;
+          if (this.selectedOption === 'Staking') {
+          contractAddress = this.selectedStakingContractAddress;
+          contractAddress.stakeLPToken(this.enteredAmountData)
+        } else if (this.selectedOption === 'Vesting') {
+          contractAddress = this.selectedVestingContractAddress;
+          contractAddress.vest(this.enteredAmountData, this.vestingPeriod)
+        }
+        console.log("Selected Token: ", this.selectedToken);
+        console.log("Contract Address: ", contractAddress);
       }
-      console.log("Selected Token: ", this.selectedToken);
-      console.log("Contract Address: ", contractAddress);
+      } catch (error) {
+        console.error("Error calling stakeLPToken: ", error);
+      }
     },
     updateWalletBalance() {
       this.walletBalanceData = this.selectedTokenBalance;
@@ -164,9 +210,9 @@ export default {
       console.log("Vesting Contract Address: ", this.vestingContractAddresses[this.selectedToken]);
       return this.vestingContractAddresses[this.selectedToken];
     },
-    selectedContractAddress() {
-      console.log("Staking Contract Address: ", this.contractAddresses[this.selectedToken]);
-      return this.contractAddresses[this.selectedToken];
+    selectedStakingContractAddress() {
+      console.log("Staking Contract Address: ", this.stakingcontractAddresses[this.selectedToken]);
+      return this.stakingcontractAddresses[this.selectedToken];
     },
     formattedVestingPeriod() {
       if (this.vestingPeriod === 365) {
@@ -188,7 +234,7 @@ export default {
       switch (this.selectedToken) {
         case 'PPePe':
           console.log("PPePe Balance: ", this.ppepeBalance);
-          console.log("rawPpepeBalance:", this.rawPepeBalance);
+          console.log("rawPpepeBalance:", this.rawPpepeBalance);
           return this.ppepeBalance;
         case 'PePe':
           console.log("PePe Balance: ", this.pepeBalance);
@@ -210,6 +256,7 @@ export default {
   },
   mounted() {
     this.walletBalanceData = this.selectedTokenBalance;
+    console.log("rawPpepeBalance on mount in StakeCard:", this.rawPpepeBalance);
   },
   watch: {
     rawPpepeBalance(newVal) {

@@ -142,9 +142,6 @@ export default {
     enteredAmountData(newVal) {
       console.log("enteredAmountData updated: ", newVal);
     },
-    walletBalanceData(newVal) {
-      console.log("walletBalanceData updated: ", newVal)
-    },
   },
   computed: {
     supplyImageSrc() {

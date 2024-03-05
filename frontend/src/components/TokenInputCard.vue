@@ -68,20 +68,25 @@ export default {
       default: null
     },
     isToken: {
-    type: Boolean,
-    default: false
+      type: Boolean,
+      default: false
+    },
+    rawBalance: {
+      type: String,
+      default: '0'
+    },
   },
-  rawBalance: {
-    type: String,
-    default: '0'
-  },
+  computed: {
+    correctBalance() {
+      return this.isToken ? this.rawBalance : this.balance;
+    }
   },
   methods: {
     handleMaxClicked() {
-  const maxAmount = this.isToken ? this.rawBalance : this.balance;
-  this.$refs.amountInput.setAmount(maxAmount);
-  this.emitAmount(maxAmount);
-},
+      const maxAmount = this.correctBalance;
+      this.$refs.amountInput.setAmount(maxAmount);
+      this.emitAmount(maxAmount);
+    },
     emitAmount(value) {
       this.$emit('amountChanged', value);
     }
