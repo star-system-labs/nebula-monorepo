@@ -65,8 +65,9 @@ import ConnectWalletButton from './ConnectWalletButton.vue';
 import TokenInputCard from './TokenInputCard.vue';
 import SpinnerSVG from './SpinnerSVG.vue';
 import LPStakingABI from '../ABI/LPStakingABI.json';
-import TokenABI from '../ABI/TokenABI.json';
+import TokenABI from '../ABI/IERC20.json';
 import { ethers } from 'ethers';
+import { toHandlers } from 'vue';
 
 export default {
   name: 'StakeCard',
@@ -156,13 +157,25 @@ export default {
       this.enteredAmountData = value;
       this.walletBalanceData = this.selectedTokenBalance;
     },
+    async detectNetwork() {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await provider.getNetwork();
+      this.currentNetwork = network.chainId === 1 ? 'mainnet' : 'sepolia';
+      console.log(`Detected and set current network to: ${this.currentNetwork}`);
+    },
     async handleStakeClick() {
       try {
+        if (!this.currentNetwork) {
+          console.error('Network not detected or unsupported');
+          return;
+        }
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
 
-        const networkAddresses = this.contractAddresses[this.currentNetwork];
-        const tokenContractAddress = networkAddresses[this.selectedToken.toLowerCase()];
+        //const networkAddresses = this.contractAddresses[this.currentNetwork];
+        const tokenContractAddress = this.currentTokenContractAddress;
+        console.log("Using token contract address:", tokenContractAddress);
+
         if (!tokenContractAddress) {
           console.error(`No contract address found for token: ${this.selectedToken}`);
           return;
@@ -176,10 +189,11 @@ export default {
         // eslint-disable-next-line no-undef
         const amountInWei = BigInt(this.enteredAmountData) * BigInt(10 ** 18);
         //const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
-
+        console.log("Approving token contract address:", tokenContractAddress);
+        console.log("For staking contract address:", stakingContractAddress);
+        console.log("Amount to approve (in Wei):", amountInWei.toString());
         const approveTx = await tokenContract.approve(stakingContractAddress, amountInWei);
         await approveTx.wait();
-
         console.log("Tokens approved for staking");
 
         if (this.selectedOption === 'Staking') {
@@ -214,6 +228,13 @@ export default {
     selectedStakingContractAddress() {
       console.log("Staking Contract Address: ", this.stakingcontractAddresses[this.selectedToken]);
       return this.stakingcontractAddresses[this.selectedToken];
+    },
+    selectedTokenContractAddress() {
+      console.log("Token Contract Address: ", this.contractAddresses[this.selectedToken]);
+      return this.contractAddresses[toHandlers.selectedToken];
+    },
+    currentTokenContractAddress() {
+      return this.contractAddresses[this.currentNetwork][this.selectedToken.toLowerCase()];
     },
     formattedVestingPeriod() {
       if (this.vestingPeriod === 365) {
@@ -255,9 +276,8 @@ export default {
       return { left: `${percentage}%` };
     },
   },
-  mounted() {
-    this.walletBalanceData = this.selectedTokenBalance;
-    console.log("rawPpepeBalance on mount in StakeCard:", this.rawPpepeBalance);
+  async mounted() {
+  await this.detectNetwork();
   },
   watch: {
     rawPpepeBalance(newVal) {
