@@ -67,7 +67,6 @@ import SpinnerSVG from './SpinnerSVG.vue';
 import LPStakingABI from '../ABI/LPStakingABI.json';
 import TokenABI from '../ABI/TokenABI.json';
 import { ethers } from 'ethers';
-let provider;
 
 export default {
   name: 'StakeCard',
@@ -159,8 +158,9 @@ export default {
     },
     async handleStakeClick() {
       try {
-        provider = new ethers.BrowserProvider(window.ethereum);
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
         const signer = provider.getSigner();
+
         const networkAddresses = this.contractAddresses[this.currentNetwork];
         const tokenContractAddress = networkAddresses[this.selectedToken.toLowerCase()];
         if (!tokenContractAddress) {
@@ -174,15 +174,16 @@ export default {
         console.log("Staking contract address:", this.stakingcontractAddresses[this.selectedToken]);
         const stakingContract = new ethers.Contract(stakingContractAddress, LPStakingABI, signer);
         // eslint-disable-next-line no-undef
-        const amountInWei = BigInt(this.enteredAmountData) * BigInt(10 ** 18);
+        //const amountInWei = BigInt(this.enteredAmountData) * BigInt(10 ** 18);
+        const amountInWei = ethers.utils.parseUnits(this.enteredAmountData, 18);
 
-        const approveTx = await tokenContract.approve(stakingContractAddress, amountInWei.toString());
+        const approveTx = await tokenContract.approve(stakingContractAddress, amountInWei);
         await approveTx.wait();
 
         console.log("Tokens approved for staking");
 
         if (this.selectedOption === 'Staking') {
-          const stakeTx = await stakingContract.stakeLPToken(amountInWei.toString());
+          const stakeTx = await stakingContract.stakeLPToken(amountInWei);
           await stakeTx.wait();
           console.log("Tokens staked successfully");
         } else if (this.selectedOption === 'Vesting') {
