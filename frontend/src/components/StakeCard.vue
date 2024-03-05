@@ -158,7 +158,7 @@ export default {
     },
     async handleStakeClick() {
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = provider.getSigner();
 
         const networkAddresses = this.contractAddresses[this.currentNetwork];
@@ -174,8 +174,8 @@ export default {
         console.log("Staking contract address:", this.stakingcontractAddresses[this.selectedToken]);
         const stakingContract = new ethers.Contract(stakingContractAddress, LPStakingABI, signer);
         // eslint-disable-next-line no-undef
-        //const amountInWei = BigInt(this.enteredAmountData) * BigInt(10 ** 18);
-        const amountInWei = ethers.utils.parseUnits(this.enteredAmountData, 18);
+        const amountInWei = BigInt(this.enteredAmountData) * BigInt(10 ** 18);
+        //const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
 
         const approveTx = await tokenContract.approve(stakingContractAddress, amountInWei);
         await approveTx.wait();
