@@ -4,7 +4,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const LP_TOKEN_ADDRESS_PEPE = "0xAb85Bb8D21Ca506F7beA2479bD26C58EAf4C6020"; 
+  const LP_TOKEN_ADDRESS_PEPE = "0x27dF660eE7D634401A37de335946472B8928A10E"; 
   const REWARD_TOKEN_ADDRESS_PEPE = "0x2cD6B2b4f4D9fA59f8E9638c00F5902fD1d9afbc";
 
   await deploy("LPStakingPePe", {
@@ -14,7 +14,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     log: true,
   });
 
-  const LP_TOKEN_ADDRESS_SHIBA = "0xC89787E000DCd572e54514511bAa1e80FbfFB160"; 
+  const LP_TOKEN_ADDRESS_SHIBA = "0xA0DB56d00465c2665acD333A848C5BDEF9D8FD19"; 
   const REWARD_TOKEN_ADDRESS_SHIBA = "0x2cD6B2b4f4D9fA59f8E9638c00F5902fD1d9afbc"; 
 
   await deploy("LPStakingShiba", {

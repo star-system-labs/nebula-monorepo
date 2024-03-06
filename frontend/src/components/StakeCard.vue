@@ -66,6 +66,7 @@ import TokenInputCard from './TokenInputCard.vue';
 import SpinnerSVG from './SpinnerSVG.vue';
 import LPStakingABI from '../ABI/LPStakingABI.json';
 import TokenABI from '../ABI/IERC20.json';
+import VestingABI from '../ABI/VestingABI.json';
 import { ethers } from 'ethers';
 import { toHandlers } from 'vue';
 
@@ -105,14 +106,14 @@ export default {
     },
     currentNetwork: 'mainnet',
       stakingcontractAddresses: {
-      'PPePe': '0xBD80F58B727a85658BeEB3712c25bDd42d7Bff72',
-      'PePe': '0xFe20461D6Bdacf74bDaF3D88643c0679B181F627',
-      'Shib': '0x2842844B0B08A859CA42FA9B1DA34cF348b8CDb4'
+      'PPePe': '0xe80d3A916331F6937Ee7174c26096a7b76BA441B',
+      'PePe': '0xe80d3A916331F6937Ee7174c26096a7b76BA441B',
+      'Shib': '0x3E9cd5A446a6455A306EeAfEa360e00d508c1bb6'
       },
       vestingContractAddresses: {
-      'PPePe': '0x282E7FD85AB9d38C2a89194Be4E3cE1017C41C2E',
-      'PePe': '0x49ad849920cB44963fF348E32bFA3C6ee8eFb9CF',
-      'Shib': '0xCa617C39e4F4C3fB87b3250A73Eec5Def35ed430'
+      'PPePe': '0x2DB7C5EFDB46CB02dD0F4D0B3cDD484c809EF52F',
+      'PePe': '0x2243E16f21504bd475ab12Faa118C6A30204E45f',
+      'Shib': '0xACE7490c64180f9DFF66B1679334BA5F9717F299'
       },
       vestingPeriod: 30,
       selectedToken: 'PPePe',
@@ -172,48 +173,40 @@ export default {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
 
-        //const networkAddresses = this.contractAddresses[this.currentNetwork];
-        const tokenContractAddress = this.currentTokenContractAddress;
-        console.log("Using token contract address:", tokenContractAddress);
+        let contractAddress, contractMethod, timeIndex;
+        if (this.selectedOption === 'Staking') {
+          contractAddress = this.stakingcontractAddresses[this.selectedToken];
+          contractMethod = 'stakeLPToken';
+        } else if (this.selectedOption === 'Vesting') {
+          contractAddress = this.vestingContractAddresses[this.selectedToken];
+          contractMethod = 'vestTokens';
+          timeIndex = this.vestingPeriod / 30 - 1;
 
-        if (!tokenContractAddress) {
-          console.error(`No contract address found for token: ${this.selectedToken}`);
+        } else {
+          console.error('Invalid option selected');
           return;
         }
-        console.log("Selected token:", this.selectedToken);
-        const tokenContract = new ethers.Contract(tokenContractAddress, TokenABI, signer);
-        console.log("Token contract address:", this.contractAddresses[this.selectedToken]);
-        const stakingContractAddress = this.stakingcontractAddresses[this.selectedToken];
-        console.log("Staking contract address:", this.stakingcontractAddresses[this.selectedToken]);
-        const stakingContract = new ethers.Contract(stakingContractAddress, LPStakingABI, signer);
-        // eslint-disable-next-line no-undef
-        const amountInWei = BigInt(this.enteredAmountData) * BigInt(10 ** 18);
-        //const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
-        console.log("Approving token contract address:", tokenContractAddress);
-        console.log("For staking contract address:", stakingContractAddress);
-        console.log("Amount to approve (in Wei):", amountInWei.toString());
-        const approveTx = await tokenContract.approve(stakingContractAddress, amountInWei);
-        await approveTx.wait();
-        console.log("Tokens approved for staking");
-
-        if (this.selectedOption === 'Staking') {
-          const stakeTx = await stakingContract.stakeLPToken(amountInWei);
-          await stakeTx.wait();
-          console.log("Tokens staked successfully");
-        } else if (this.selectedOption === 'Vesting') {
-          let contractAddress;
-          if (this.selectedOption === 'Staking') {
-          contractAddress = this.selectedStakingContractAddress;
-          contractAddress.stakeLPToken(this.enteredAmountData)
-        } else if (this.selectedOption === 'Vesting') {
-          contractAddress = this.selectedVestingContractAddress;
-          contractAddress.vest(this.enteredAmountData, this.vestingPeriod)
+        if (!contractAddress) {
+          console.error(`No contract address found for option: ${this.selectedOption} and token: ${this.selectedToken}`);
+          return;
         }
-        console.log("Selected Token: ", this.selectedToken);
-        console.log("Contract Address: ", contractAddress);
-      }
+        console.log(`Using contract address: ${contractAddress} for ${this.selectedOption}`);
+        const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
+        const tokenContract = new ethers.Contract(this.currentTokenContractAddress, TokenABI, signer);
+        const approveTx = await tokenContract.approve(contractAddress, amountInWei);
+        await approveTx.wait();
+        console.log("Tokens approved");
+        const actionContract = new ethers.Contract(contractAddress, this.selectedOption === 'Staking' ? LPStakingABI : VestingABI, signer);
+        let actionTx;
+        if (this.selectedOption === 'Staking') {
+        actionTx = await actionContract[contractMethod](amountInWei);
+        } else if (this.selectedOption === 'Vesting') {
+        actionTx = await actionContract[contractMethod](amountInWei, timeIndex);
+        }
+        await actionTx.wait();
+        console.log(`${this.selectedOption} action completed successfully`);
       } catch (error) {
-        console.error("Error calling stakeLPToken: ", error);
+        console.error("Error during action:", error);
       }
     },
     updateWalletBalance() {
