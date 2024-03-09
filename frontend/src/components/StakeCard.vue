@@ -91,11 +91,30 @@ export default {
   },
   data() {
     return {
+      lpTokens: {
+        PrimordialPePeLP: '0x45a8d3a8BFa5b1ec496508D738f5B9E3bD2cb86d',
+        PePeLP: '0xa43fe16908251ee70ef74718545e4fe6c5ccec9f',
+        ShibaLP: '0x811beed0119b4afce20d2583eb608c6f7af1954f',
+      },
+      lpTokenBalances: {
+        PrimordialPePeLP: '0',
+        PePeLP: '0',
+        ShibaLP: '0',
+      },
+      erc20ABI: [
+        {
+          "constant": true,
+          "inputs": [{"name": "_owner", "type": "address"}],
+          "name": "balanceOf",
+          "outputs": [{"name": "balance", "type": "uint256"}],
+          "type": "function"
+        },
+      ],
       contractAddresses: {
       mainnet: {
         pepe: '0x6982508145454ce325ddbe47a25d4ec3d2311933',
         pond: '0x423f4e6138E475D85CF7Ea071AC92097Ed631eea',
-        shib: '0x11541e990036ec13D521d584F098a83bD0F4BFC3',
+        shib: '0xfD1450a131599ff34f3Be1775D8c8Bf79E353D8c',
         ppepe: '0x98830a6cc6f8964cec4ffd65f19edebba6fef865'
       },
       sepolia: {
@@ -131,6 +150,20 @@ export default {
     };
   },
   methods: {
+    async fetchLPTokenBalances() {
+      if (!this.accountAddress) {
+        console.log("No account address provided.");
+        return;
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      for (const [tokenName, tokenAddress] of Object.entries(this.lpTokens)) {
+        const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
+        const balance = await tokenContract.balanceOf(this.accountAddress);
+        this.lpTokenBalances[tokenName] = balance.toString();
+        console.log(`${tokenName} (${tokenAddress}) balance:`, this.lpTokenBalances[tokenName]);
+      }
+    },
     adjustVestingPeriod() {
       if (this.vestingPeriod > 330) {
         this.vestingPeriod = 365;
@@ -271,8 +304,14 @@ export default {
   },
   async mounted() {
   await this.detectNetwork();
+  this.fetchLPTokenBalances();
   },
   watch: {
+    accountAddress(newVal, oldVal) {
+      if (newVal !== oldVal) {
+        this.fetchLPTokenBalances();
+      }
+    },
     rawPpepeBalance(newVal) {
       console.log("New rawPpepeBalance:", newVal);
     },

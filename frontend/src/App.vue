@@ -109,7 +109,7 @@ export default {
         mainnet: {
           pepe: '0x6982508145454ce325ddbe47a25d4ec3d2311933',
           pond: '0x423f4e6138E475D85CF7Ea071AC92097Ed631eea',
-          shib: '0x11541e990036ec13D521d584F098a83bD0F4BFC3',
+          shib: '0xfD1450a131599ff34f3Be1775D8c8Bf79E353D8c',
           ppepe: '0x98830a6cc6f8964cec4ffd65f19edebba6fef865'
         },
         sepolia: {
