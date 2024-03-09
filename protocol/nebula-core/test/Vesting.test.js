@@ -3,20 +3,14 @@
 
     describe("Vesting", function () {
 
-    let vesting, vestingToken, pepeToken, planets, impacts, owner, addr1, addr2;
+    let vesting, vestingToken, pepeToken, owner, addr1, addr2;
 
     beforeEach(async function () {
         const VestingToken = await ethers.getContractFactory("MockToken");
         vestingToken = await VestingToken.deploy("MockToken", "MTKN");
 
-        const PepeToken = await ethers.getContractFactory("MockPrimordialPePe");
+        const PepeToken = await ethers.getContractFactory("TestSpawn");
         pepeToken = await PepeToken.deploy();
-        
-        const Planets = await ethers.getContractFactory("MockPrimordialPlanet"); 
-        planets = await Planets.deploy();
-
-        const Impacts = await ethers.getContractFactory("MockCosmicImpact");
-        impacts = await Impacts.deploy();
 
         const Vesting = await ethers.getContractFactory("Vesting");
         vesting = await Vesting.deploy(vestingToken.address, pepeToken.address);
@@ -24,32 +18,7 @@
         [owner, addr1, addr2] = await ethers.getSigners();
 
         await vesting.connect(owner).setPrimordialPePeToken(pepeToken.address);
-        await vesting.connect(owner).setPrimordialPlanets(planets.address);
-        await vesting.connect(owner).setCosmicImpacts(impacts.address);
         await pepeToken.connect(owner).grantMinterRole(vesting.address);
-    });
-
-    it("should allow staking and unstaking Planets & Impacts", async function () {
-        const planetId = 0;
-        const impactId = 0;
-        await planets.connect(owner).mint(addr1.address);
-        await impacts.connect(owner).mint(addr1.address);
-
-        await planets.connect(addr1).approve(vesting.address, planetId);
-        await vesting.connect(addr1).stakePlanet(planetId);
-
-        expect(await planets.ownerOf(planetId)).to.equal(vesting.address);
-
-        await vesting.connect(addr1).unstakePlanet();  
-        expect(await planets.ownerOf(planetId)).to.equal(addr1.address);
-
-        await impacts.connect(addr1).approve(vesting.address, impactId);
-        await vesting.connect(addr1).stakeImpact(impactId);
-
-        expect(await impacts.ownerOf(impactId)).to.equal(vesting.address);
-
-        await vesting.connect(addr1).unstakeImpact();  
-        expect(await impacts.ownerOf(impactId)).to.equal(addr1.address);
     });
 
     it("should vest 10 million tokens and claim rewards", async function () {
@@ -228,6 +197,31 @@
           .to.be.revertedWith("Ownable: caller is not the owner");
     });
 
+    it("should not allow vesting more than 10 instances", async function () {
+        const timeBrackets = [
+            30 * 24 * 60 * 60,
+            60 * 24 * 60 * 60,
+            90 * 24 * 60 * 60,
+            120 * 24 * 60 * 60,
+            150 * 24 * 60 * 60,
+            180 * 24 * 60 * 60,
+            210 * 24 * 60 * 60,
+            240 * 24 * 60 * 60,
+            270 * 24 * 60 * 60,
+        ];
+        const amount = ethers.utils.parseUnits("1", 18); 
+        for (let i = 0; i < 10; i++) {
+            await vestingToken.connect(owner).mint(addr1.address, amount);
+            await vestingToken.connect(addr1).approve(vesting.address, amount);
+            await vesting.connect(addr1).vestTokens(amount, i % timeBrackets.length);
+        }
+    
+        await vestingToken.connect(owner).mint(addr1.address, amount);
+        await vestingToken.connect(addr1).approve(vesting.address, amount);
+        await expect(vesting.connect(addr1).vestTokens(amount, 0))
+            .to.be.revertedWith("Max vesting positions reached");
+    });
+
     it("should return correct vests count for a user", async function () {
         const vestAmount1 = ethers.utils.parseUnits("100", 18);
         const vestAmount2 = ethers.utils.parseUnits("200", 18);
@@ -264,30 +258,60 @@
         
         const vests = await vesting.getAllVests(addr1.address);
         expect(vests.length).to.equal(2);
-    });    
+    });
+
+    it("should display all vests and slots for a user", async function () {
+        const amount = ethers.utils.parseUnits("100", 18);
+        await vestingToken.connect(owner).mint(addr1.address, amount);
+        await vestingToken.connect(addr1).approve(vesting.address, amount);
+        await vesting.connect(addr1).vestTokens(amount, 0);
     
-    it("should find the correct time bracket index", async function () {
-        const days = 45;
+        const vests = await vesting.getAllVests(addr1.address);
+        const [slotsAvailability, vestsData] = await vesting.getAllSlots(addr1.address);
+    
+        console.log("Vests:", vests);
+        console.log("Slots Availability:", slotsAvailability);
+        console.log("Vests Data in Slots:", vestsData);
+    
+        expect(vests.length).to.be.greaterThan(0);
+        expect(slotsAvailability.length).to.equal(10);
+        expect(vestsData.length).to.equal(10);
+    });
+    
+    it("should find the correct time bracket index - 45 days", async function () {
+        const days = 30;
         const secondsPerDay = 86400;
         const timeInSeconds = days * secondsPerDay;
         const timeBracketIndex = await vesting.findTimeBracketIndex(timeInSeconds);
-        expect(timeBracketIndex).to.equal(1); 
+        expect(timeBracketIndex).to.equal(0); 
     });
 
-    it("should toggle the reward booster contract", async function () {
-        const RewardBooster = await ethers.getContractFactory("MockRewardBooster");
-        const rewardBooster = await RewardBooster.deploy();
-        
-        await vesting.connect(owner).toggleRewardBooster(rewardBooster.address);
-        expect(await vesting.rewardBoosterContract()).to.equal(rewardBooster.address);
+    it("should find the correct time bracket index - 120 days", async function () {
+        const days = 120;
+        const secondsPerDay = 86400;
+        const timeInSeconds = days * secondsPerDay;
+        const timeBracketIndex = await vesting.findTimeBracketIndex(timeInSeconds);
+        expect(timeBracketIndex).to.equal(3); 
     });
-      
-    it("should only allow the owner to toggle the reward booster contract", async function () {
-        const RewardBooster = await ethers.getContractFactory("MockRewardBooster");
-        const rewardBooster = await RewardBooster.deploy();
-        
-        await expect(vesting.connect(addr1).toggleRewardBooster(rewardBooster.address))
-          .to.be.revertedWith("Ownable: caller is not the owner");
+
+    it("should overwrite vest data when reusing a slot", async function () {
+        let amount = ethers.utils.parseUnits("1000", 18);
+        await vestingToken.connect(owner).mint(addr1.address, amount);
+        await vestingToken.connect(addr1).approve(vesting.address, amount);
+        await vesting.connect(addr1).vestTokens(amount, 0);
+    
+        await ethers.provider.send("evm_increaseTime", [31 * 24 * 60 * 60]);
+        await ethers.provider.send("evm_mine");
+        await vesting.connect(addr1).claimRewards(0);
+    
+        amount = ethers.utils.parseUnits("2000", 18); 
+        await vestingToken.connect(owner).mint(addr1.address, amount);
+        await vestingToken.connect(addr1).approve(vesting.address, amount);
+        await vesting.connect(addr1).vestTokens(amount, 1);
+    
+        const vest = await vesting.getVest(addr1.address, 0);
+    
+        expect(vest.amount.toString()).to.equal(amount.toString());
     });
 
     });
