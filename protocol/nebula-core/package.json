@@ -2,14 +2,20 @@
   "name": "hardhat-project",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-etherscan": "^3.1.8",
+    "@uniswap/v2-core": "^1.0.1",
     "dotenv": "^10.0.0",
+    "ethers": "^5.7.2",
     "hardhat": "^2.19.1",
     "hardhat-abi-exporter": "^2.10.1",
-    "hardhat-deploy": "^0.11.45"
+    "hardhat-deploy": "^0.11.45",
+    "hardhat-gas-reporter": "^1.0.10",
+    "solidity-coverage": "^0.8.11"
   },
   "dependencies": {
-    "@nomiclabs/hardhat-etherscan": "^3.1.7",
     "@openzeppelin/contracts": "^4.8.2",
+    "@uniswap/lib": "^4.0.1-alpha",
     "chai": "^4.3.7"
   }
 }

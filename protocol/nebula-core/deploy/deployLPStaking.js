@@ -4,8 +4,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const LP_TOKEN_ADDRESS_PEPE = "0x27dF660eE7D634401A37de335946472B8928A10E"; 
-  const REWARD_TOKEN_ADDRESS_PEPE = "0x2cD6B2b4f4D9fA59f8E9638c00F5902fD1d9afbc";
+  const LP_TOKEN_ADDRESS_PEPE = "0xa43fe16908251ee70ef74718545e4fe6c5ccec9f"; 
+  const REWARD_TOKEN_ADDRESS_PEPE = "0x98830a6cc6f8964cec4ffd65f19edebba6fef865";
 
   await deploy("LPStakingPePe", {
     contract: "LPStaking",
@@ -14,10 +14,12 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     log: true,
   });
 
-  const LP_TOKEN_ADDRESS_SHIBA = "0xA0DB56d00465c2665acD333A848C5BDEF9D8FD19"; 
-  const REWARD_TOKEN_ADDRESS_SHIBA = "0x2cD6B2b4f4D9fA59f8E9638c00F5902fD1d9afbc"; 
+  nonce++;
 
-  await deploy("LPStakingShiba", {
+  const LP_TOKEN_ADDRESS_SHIBA = "0x811beed0119b4afce20d2583eb608c6f7af1954f"; 
+  const REWARD_TOKEN_ADDRESS_SHIBA = "0x98830a6cc6f8964cec4ffd65f19edebba6fef865"; 
+
+  await deploy("LPStakingShib", {
     contract: "LPStaking",
     from: deployer,
     args: [LP_TOKEN_ADDRESS_SHIBA, REWARD_TOKEN_ADDRESS_SHIBA],
