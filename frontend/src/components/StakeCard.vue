@@ -9,7 +9,7 @@
         class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10"
         :class="selectedOption === 'Staking' ? 'text-yellow-300' : 'text-custom-blue-inactive'"
         @click="setSelectedOption('Staking')">
-        Staking
+        LP Staking
       </div>
       <div 
         class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10"
@@ -36,8 +36,8 @@
       class="w-[350px] mb-4 text-teal font-origin"
       :isToken="true"
       :rawBalance="selectedToken === 'PPePe' ? rawPpepeBalance : selectedToken === 'PePe' ? rawPepeBalance : selectedToken === 'Shib' ? rawShibBalance : '0'"
-  :currency="selectedToken"
-  :balance="selectedTokenBalance"
+      :currency="selectedToken"
+      :balance="selectedTokenBalance"
       label="You Stake:"
       :currencyLogo="selectedCurrencyLogo"
       :tokenName="setSelectedCurrency"
@@ -279,21 +279,34 @@ export default {
     },
     selectedTokenBalance() {
       console.log("Selected Token: ", this.selectedToken);
-      switch (this.selectedToken) {
-        case 'PPePe':
-          console.log("PPePe Balance: ", this.ppepeBalance);
-          console.log("rawPpepeBalance:", this.rawPpepeBalance);
-          return this.ppepeBalance;
-        case 'PePe':
-          console.log("PePe Balance: ", this.pepeBalance);
-          console.log("rawPepeBalance:", this.rawPepeBalance);
-          return this.pepeBalance;
+      if (this.selectedOption === 'Staking') {
+        switch (this.selectedToken) {
+          case 'PPePe':
+            console.log("PrimordialPePeLP Balance: ", this.lpTokenBalances.PrimordialPePeLP);
+            return this.lpTokenBalances.PrimordialPePeLP;
+          case 'PePe':
+            console.log("PePeLP Balance: ", this.lpTokenBalances.PePeLP);
+            return this.lpTokenBalances.PePeLP;
+          case 'Shib':
+            console.log("ShibaLP Balance: ", this.lpTokenBalances.ShibaLP);
+            return this.lpTokenBalances.ShibaLP;
+          default:
+            return '0';
+        }
+      } else {
+        switch (this.selectedToken) {
+          case 'PPePe':
+            console.log("PPePe Balance: ", this.ppepeBalance);
+            return this.ppepeBalance;
+          case 'PePe':
+            console.log("PePe Balance: ", this.pepeBalance);
+            return this.pepeBalance;
         case 'Shib':
           console.log("Shib Balance: ", this.shibBalance);
-          console.log("rawShibBalance:", this.rawShibBalance);
           return this.shibBalance;
         default:
-          return '0.00';
+          return '0';
+        }
       }
     },
     toggleStyle() {
