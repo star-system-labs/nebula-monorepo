@@ -35,6 +35,12 @@ export default {
     AmountInput,
   },
   props: {
+    isLPStaking: {
+      type: Boolean,
+      default: false
+    },
+    lpTokenBalances: Object,
+    tokenBalances: Object,
     accountAddress: {
       type: String,
       default: null
@@ -77,20 +83,40 @@ export default {
     },
   },
   computed: {
-    correctBalance() {
-      return this.isToken ? this.rawBalance : this.balance;
+  correctBalance() {
+    if (this.isLPStaking) {
+      const keyMapping = {
+        'ppepe': 'PrimordialPePeLP',
+        'pepe': 'PePeLP',
+        'shib': 'ShibaLP',
+      };
+      const normalizedCurrency = this.currency.toLowerCase();
+      const mappedKey = keyMapping[normalizedCurrency] || normalizedCurrency;
+      const balance = this.lpTokenBalances[mappedKey] || '0';
+      console.log(`LP Balance for ${normalizedCurrency} (${mappedKey}):`, balance);
+      return balance;
     }
-  },
+    return this.isToken ? this.rawBalance : this.balance;
+  }
+},
   methods: {
     handleMaxClicked() {
-      const maxAmount = this.correctBalance;
+      let maxAmount = parseFloat(this.correctBalance);
+      if (Number.isInteger(maxAmount)) {
+        maxAmount = maxAmount.toString(); 
+      } else {
+        maxAmount = maxAmount.toFixed(2); 
+      }
       this.$refs.amountInput.setAmount(maxAmount);
       this.emitAmount(maxAmount);
     },
     emitAmount(value) {
       this.$emit('amountChanged', value);
     }
+  },
+  mounted() {
+    console.log(this.lpTokenBalances);
+    console.log(this.tokenBalances);
   }
 }
 </script>
-
