@@ -35,6 +35,10 @@
      <TokenInputCard
        class="w-[350px] mb-4 text-teal font-origin"
        :isToken="true"
+       :isLPStaking="selectedOption === 'Staking'"
+       :selectedOption="selectedOption"
+       :lpTokenBalances="lpTokenBalances"
+       :tokenBalances="tokenBalances"
        :rawBalance="selectedToken === 'PPePe' ? rawPpepeBalance : selectedToken === 'PePe' ? rawPepeBalance : selectedToken === 'Shib' ? rawShibBalance : '0'"
        :currency="selectedToken"
        :balance="selectedTokenBalance"
@@ -91,10 +95,11 @@
    },
    data() {
      return {
-       lpTokens: {
-         PrimordialPePeLP: '0x45a8d3a8BFa5b1ec496508D738f5B9E3bD2cb86d',
-         PePeLP: '0xa43fe16908251ee70ef74718545e4fe6c5ccec9f',
-         ShibaLP: '0x811beed0119b4afce20d2583eb608c6f7af1954f',
+       currentNetwork: 'mainnet',
+       tokenBalances: {
+         ppepe: '0',
+         pepe: '0',
+         shib: '0',
        },
        lpTokenBalances: {
          PrimordialPePeLP: '0',
@@ -111,28 +116,50 @@
          },
        ],
        contractAddresses: {
-       mainnet: {
-         pepe: '0x6982508145454ce325ddbe47a25d4ec3d2311933',
-         pond: '0x423f4e6138E475D85CF7Ea071AC92097Ed631eea',
-         shib: '0xfD1450a131599ff34f3Be1775D8c8Bf79E353D8c',
-         ppepe: '0x98830a6cc6f8964cec4ffd65f19edebba6fef865'
-       },
-       sepolia: {
-         pepe: '0x27dF660eE7D634401A37de335946472B8928A10E',
-         shib: '0xA0DB56d00465c2665acD333A848C5BDEF9D8FD19',
-         ppepe: '0x2cD6B2b4f4D9fA59f8E9638c00F5902fD1d9afbc'
-       }
-     },
-     currentNetwork: 'mainnet',
-       stakingcontractAddresses: {
-       'PPePe': '0xe80d3A916331F6937Ee7174c26096a7b76BA441B',
-       'PePe': '0xe80d3A916331F6937Ee7174c26096a7b76BA441B',
-       'Shib': '0x3E9cd5A446a6455A306EeAfEa360e00d508c1bb6'
-       },
-       vestingContractAddresses: {
-       'PPePe': '0x2DB7C5EFDB46CB02dD0F4D0B3cDD484c809EF52F',
-       'PePe': '0x2243E16f21504bd475ab12Faa118C6A30204E45f',
-       'Shib': '0xACE7490c64180f9DFF66B1679334BA5F9717F299'
+        mainnet: {
+          staking: {
+           PPePe: '0xe80d3A916331F6937Ee7174c26096a7b76BA441B',
+           PePe: '0x8CCFd0d157eff755b70Ed68F4206Db4E2dF9A0FA',
+           Shib: '0x63589B3be51D403e265fE69dB2b93Ea33ac7D614',
+          },
+          vesting: {
+           PPePe: '0xA486CB5f61F89155eC05847153B5A679A1Ab9197',
+           PePe: '0x85228679D462fD70eba48f80C9079C0E00ACc796',
+           Shib: '0xAF1A16a595309aE9e666D6Eb509347e0Afa0A3CF',
+          },
+          tokens: {
+           ppepe: '0x98830a6cc6f8964cec4ffd65f19edebba6fef865',
+           pepe: '0x6982508145454ce325ddbe47a25d4ec3d2311933',
+           shib: '0xfD1450a131599ff34f3Be1775D8c8Bf79E353D8c',
+          },
+          lptokens: {
+           PrimordialPePeLP: '0xE763297d736b73d7e37809513B7399D1F66443Ed',
+           PePeLP: '0xB08eAC861c0FD07e74c3Bc6FBABe309e1F82afE5',
+           ShibaLP: '0x5e29a016b9d79ef38Cc66B3E58A08af80b26FB91',
+          }
+        },
+        sepolia: {
+          staking: {
+           PPePe: '0x39904563A3F0414aDfF5F608BE6ecA6Ea6Da023A',
+           PePe: '0x39904563A3F0414aDfF5F608BE6ecA6Ea6Da023A',
+           Shib: '0xAc2C320697B338a168556bd6b909584416AaaEc4',
+          },
+          vesting: {
+           PPePe: '0xC8A0173CC9Ef2481760d44Fbfc76Fb93F47D329F',
+           PePe: '0x28Cf2e97673Ebf87981ed872c2b844A7B2a03FDb',
+           Shib: '0xCdEE06A091EB25A8B178d57e21f1E36c90F5F9B4',
+          },
+          tokens: {
+           ppepe: '0xB6Ad6AD0364Eb5E8B109a55F01F4F68971B40E2B',
+           pepe: '0xf73BBA852bb30553326fA837f091aB7Ce740D0a9',
+           shib: '0x46cB0AfFA874719c7b273Df80954CC98199e2d69',
+          },
+          lptokens: {
+           PrimordialPePeLP: '0xE763297d736b73d7e37809513B7399D1F66443Ed',
+           PePeLP: '0xB08eAC861c0FD07e74c3Bc6FBABe309e1F82afE5',
+           ShibaLP: '0x5e29a016b9d79ef38Cc66B3E58A08af80b26FB91',
+          }
+        },
        },
        vestingPeriod: 30,
        selectedToken: 'PPePe',
@@ -150,6 +177,42 @@
      };
    },
    methods: {
+     subscribeToNewBlocks() {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      provider.on('block', () => {
+        this.fetchLPTokenBalances();
+        this.fetchTokenBalances();
+      });
+     },
+     abbreviateNumber(value) {
+       let newValue = parseFloat(value);
+       if (newValue >= 1e12) {
+         return (newValue / 1e12).toFixed(2) + "T";
+       } else if (newValue >= 1e9) {
+         return (newValue / 1e9).toFixed(2) + "B";
+       } else if (newValue >= 1e6) {
+         return (newValue / 1e6).toFixed(2) + "M";
+       } else if (newValue >= 1e3) {
+         return (newValue / 1e3).toFixed(2) + "K";
+       } else {
+         return newValue.toString();
+       }
+     },
+     async fetchTokenBalances() {
+       if (!this.accountAddress) {
+         console.log("No account address provided.");
+         return;
+       }
+ 
+       const provider = new ethers.BrowserProvider(window.ethereum);
+       for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].tokens)) {
+         const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
+         const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
+         const balanceInEther = ethers.formatEther(balanceInWei);
+         this.tokenBalances[tokenName] = balanceInEther;
+         console.log(`${tokenName} (${tokenAddress}) balance:`, this.tokenBalances[tokenName]);
+       }
+     },
      async fetchLPTokenBalances() {
        if (!this.accountAddress) {
          console.log("No account address provided.");
@@ -157,11 +220,13 @@
        }
  
        const provider = new ethers.BrowserProvider(window.ethereum);
-       for (const [tokenName, tokenAddress] of Object.entries(this.lpTokens)) {
+       for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].lptokens)) {
          const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
-         const balance = await tokenContract.balanceOf(this.accountAddress);
-         this.lpTokenBalances[tokenName] = balance.toString();
+         const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
+         const balanceInEther = ethers.formatEther(balanceInWei);
+         this.lpTokenBalances[tokenName] = balanceInEther;
          console.log(`${tokenName} (${tokenAddress}) balance:`, this.lpTokenBalances[tokenName]);
+         
        }
      },
      adjustVestingPeriod() {
@@ -248,12 +313,12 @@
    },
    computed: {
      selectedVestingContractAddress() {
-       console.log("Vesting Contract Address: ", this.vestingContractAddresses[this.selectedToken]);
-       return this.vestingContractAddresses[this.selectedToken];
+       console.log("Vesting Contract Address: ", this.contractAddresses[this.currentNetwork].vesting[this.selectedToken]);
+       return this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
      },
      selectedStakingContractAddress() {
-       console.log("Staking Contract Address: ", this.stakingcontractAddresses[this.selectedToken]);
-       return this.stakingcontractAddresses[this.selectedToken];
+       console.log("Staking Contract Address: ", this.contractAddresses[this.currentNetwork].staking[this.selectedToken]);
+       return this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
      },
      selectedTokenContractAddress() {
        console.log("Token Contract Address: ", this.contractAddresses[this.selectedToken]);
@@ -279,35 +344,41 @@
      },
      selectedTokenBalance() {
        console.log("Selected Token: ", this.selectedToken);
+       let balance = '0';
        if (this.selectedOption === 'Staking') {
          switch (this.selectedToken) {
            case 'PPePe':
              console.log("PrimordialPePeLP Balance: ", this.lpTokenBalances.PrimordialPePeLP);
-             return this.lpTokenBalances.PrimordialPePeLP;
+             balance = this.lpTokenBalances.PrimordialPePeLP;
+             break;
            case 'PePe':
              console.log("PePeLP Balance: ", this.lpTokenBalances.PePeLP);
-             return this.lpTokenBalances.PePeLP;
+             balance = this.lpTokenBalances.PePeLP;
+             break;
            case 'Shib':
              console.log("ShibaLP Balance: ", this.lpTokenBalances.ShibaLP);
-             return this.lpTokenBalances.ShibaLP;
-           default:
-             return '0';
+             balance = this.lpTokenBalances.ShibaLP;
+             break;
          }
        } else {
          switch (this.selectedToken) {
            case 'PPePe':
              console.log("PPePe Balance: ", this.ppepeBalance);
-             return this.ppepeBalance;
+             balance = this.ppepeBalance;
+             break;
            case 'PePe':
              console.log("PePe Balance: ", this.pepeBalance);
-             return this.pepeBalance;
+             balance = this.pepeBalance;
+             break;
          case 'Shib':
            console.log("Shib Balance: ", this.shibBalance);
-           return this.shibBalance;
-         default:
-           return '0';
+           balance = this.shibBalance;
+           break;
          }
        }
+       console.log(`${this.selectedToken} Balance: `, balance);
+ 
+       return this.abbreviateNumber(balance);
      },
      toggleStyle() {
        let index = this.currencies.indexOf(this.selectedToken);
@@ -316,13 +387,23 @@
      },
    },
    async mounted() {
-   await this.detectNetwork();
-   this.fetchLPTokenBalances();
+     this.detectNetwork();
+      if (window.ethereum) {
+        window.ethereum.on('accountsChanged', (accounts) => {
+          this.$emit('update:accountAddress', accounts[0]);
+          this.fetchLPTokenBalances();
+          this.fetchTokenBalances();
+        });
+        this.subscribeToNewBlocks();
+        this.fetchLPTokenBalances();
+        this.fetchTokenBalances();
+      }
    },
    watch: {
      accountAddress(newVal, oldVal) {
        if (newVal !== oldVal) {
          this.fetchLPTokenBalances();
+         this.fetchTokenBalances();
        }
      },
      rawPpepeBalance(newVal) {
@@ -345,11 +426,11 @@
      walletBalanceData(newVal) {
        console.log("walletBalanceData updated: ", newVal)
      },
-   },
-   created() {
-   console.log("StakeCard raw balances:", this.rawPpepeBalance, this.rawPepeBalance, this.rawShibBalance);
- },
- };
+    },
+    created() {
+    console.log("ClaimCard raw balances:", this.rawPpepeBalance, this.rawPepeBalance, this.rawShibBalance);
+    },
+  };
  </script>
  
  <style scoped>

@@ -45,6 +45,17 @@
       <div v-if="selectedCard === 'claim'" class="w-full">
         <ClaimCard
             :accountAddress="accountAddress"
+            :ppepeBalance="ppepeBalance"
+            :pepeBalance="pepeBalance"
+            :shibBalance="shibBalance"
+            :selectedToken="selectedToken"
+            :setSelectedToken="setSelectedToken"
+            :selectedTokenBalance="selectedTokenBalance"
+            :rawPpepeBalance="rawPpepeBalance"
+            :rawPepeBalance="rawPepeBalance"
+            :rawPndcBalance="rawPndcBalance"
+            :rawShibBalance="rawShibBalance"
+            :contract-addresses="currentContractAddresses"
             @connect="$emit('connect')"
             />
       </div>

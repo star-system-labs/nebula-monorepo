@@ -113,9 +113,10 @@ export default {
           ppepe: '0x98830a6cc6f8964cec4ffd65f19edebba6fef865'
         },
         sepolia: {
-          pepe: '0x27dF660eE7D634401A37de335946472B8928A10E',
-          shib: '0xA0DB56d00465c2665acD333A848C5BDEF9D8FD19',
-          ppepe: '0x2cD6B2b4f4D9fA59f8E9638c00F5902fD1d9afbc'
+          pepe: '0xf73BBA852bb30553326fA837f091aB7Ce740D0a9',
+          shib: '0x46cB0AfFA874719c7b273Df80954CC98199e2d69',
+          ppepe: '0xB6Ad6AD0364Eb5E8B109a55F01F4F68971B40E2B',
+          pond: '0xf73BBA852bb30553326fA837f091aB7Ce740D0a9',
         }
       },
       currentContractAddresses: {
@@ -203,19 +204,46 @@ export default {
           });
           this.balance = this.formatBalance(formatEther(weiBalance));
 
+          if (this.currentContractAddresses.pepe) {
           const pepeContract = new Contract(this.currentContractAddresses.pepe, ERC20_ABI, provider);
           try {
+            console.log("Contract address:", this.currentContractAddresses.pepe);
             const pepeTokenBalance = await pepeContract.balanceOf(this.accountAddress);
             this.rawPepeBalance = formatEther(pepeTokenBalance);
             this.pepeBalance = this.abbreviateNumber(this.rawPepeBalance);
             console.log("PEPE Token balance:", pepeTokenBalance.toString());
             console.log("Raw Balance:", this.rawPepeBalance.toString());
             console.log("Pepe Balance:", this.pepeBalance.toString());
+            this.pepeBalance = this.formatBalance(formatEther(pepeTokenBalance));
           } catch (error) {
             console.error("Error fetching PEPE balance:", error);
             this.pepeBalance = "0";
           }
+          } else {
+          console.error("PEPE contract address is null");
+          this.pepeBalance = "0";
+          }
 
+          if (this.currentContractAddresses.pndc) {
+          const pndcContract = new Contract(this.currentContractAddresses.pndc, ERC20_ABI, provider);
+          try {
+            const pndcTokenBalance = await pndcContract.balanceOf(this.accountAddress);
+            this.rawPndcBalance = formatEther(pndcTokenBalance);
+            this.pndcBalance = this.abbreviateNumber(this.rawPndcBalance);
+            console.log("PNDC Token balance:", pndcTokenBalance.toString());
+            console.log("Raw Balance:", this.rawPndcBalance.toString());
+            console.log("Pond Balance:", this.pndcBalance.toString());
+            this.pndcBalance = this.formatBalance(formatEther(pndcTokenBalance));
+          } catch (error) {
+            console.error("Error fetching PNDC balance:", error);
+            this.pndcBalance = "0";
+          }
+          } else {
+            console.error("POND contract address is null");
+            this.pndcBalance = "0";
+          }
+
+          if (this.currentContractAddresses.shib) {
           const shibContract = new Contract(this.currentContractAddresses.shib, ERC20_ABI, provider);
           try {
             const shibTokenBalance = await shibContract.balanceOf(this.accountAddress);
@@ -223,13 +251,18 @@ export default {
             this.shibBalance = this.abbreviateNumber(this.rawShibBalance);
             console.log("SHIB Token balance:", shibTokenBalance.toString());
             console.log("Raw Balance:", this.rawShibBalance.toString());
-            console.log("Shib Balance:", this.shibBalance.toString());            
-            this.shibBalance = this.abbreviateNumber(formatEther(shibTokenBalance));
+            console.log("Shib Balance:", this.shibBalance.toString());
+            this.shibBalance = this.formatBalance(formatEther(shibTokenBalance));
           } catch (error) {
             console.error("Error fetching SHIB balance:", error);
             this.shibBalance = "0";
           }
-          
+          } else {
+            console.error("SHIB contract address is null");
+            this.shibBalance = "0";
+          }
+
+          if (this.currentContractAddresses.ppepe) {
           const ppepeContract = new Contract(this.currentContractAddresses.ppepe, ERC20_ABI, provider);
           try {
             const ppepeTokenBalance = await ppepeContract.balanceOf(this.accountAddress);
@@ -237,10 +270,14 @@ export default {
             this.ppepeBalance = this.abbreviateNumber(this.rawPpepeBalance);
             console.log("PPEPE Token balance:", ppepeTokenBalance.toString());
             console.log("Raw Balance:", this.rawPpepeBalance.toString());
-            console.log("Ppepe Balance:", this.ppepeBalance.toString());           
-            this.ppepeBalance = this.abbreviateNumber(formatEther(ppepeTokenBalance));
+            console.log("Ppepe Balance:", this.ppepeBalance.toString());
+            this.ppepeBalance = this.formatBalance(formatEther(ppepeTokenBalance));
           } catch (error) {
             console.error("Error fetching PPEPE balance:", error);
+            this.ppepeBalance = "0";
+          }
+          } else {
+            console.error("PPEPE   contract address is null");
             this.ppepeBalance = "0";
           }
 
@@ -281,20 +318,27 @@ export default {
       this.balance = this.formatBalance(formatEther(weiBalance));
       console.log(`Updated Raw Balances: PPEPE: ${this.rawPpepeBalance}, PEPE: ${this.rawPepeBalance}, SHIB: ${this.rawShibBalance}`);
       
+      if (this.currentContractAddresses.pepe) {
       const pepeContract = new Contract(this.currentContractAddresses.pepe, ERC20_ABI, provider);
       try {
+        console.log("Contract address:", this.currentContractAddresses.pepe);
         const pepeTokenBalance = await pepeContract.balanceOf(this.accountAddress);
         this.rawPepeBalance = formatEther(pepeTokenBalance);
         this.pepeBalance = this.abbreviateNumber(this.rawPepeBalance);
         console.log("PEPE Token balance:", pepeTokenBalance.toString());
         console.log("Raw Balance:", this.rawPepeBalance.toString());
         console.log("Pepe Balance:", this.pepeBalance.toString());
-        //this.pepeBalance = this.formatBalance(formatEther(pepeTokenBalance));
+        this.pepeBalance = this.abbreviateNumber(formatEther(pepeTokenBalance));
       } catch (error) {
         console.error("Error fetching PEPE balance:", error);
         this.pepeBalance = "0";
       }
+      } else {
+      console.error("PEPE contract address is null");
+      this.pepeBalance = "0";
+      }
 
+      if (this.currentContractAddresses.pndc) {
       const pndcContract = new Contract(this.currentContractAddresses.pndc, ERC20_ABI, provider);
       try {
         const pndcTokenBalance = await pndcContract.balanceOf(this.accountAddress);
@@ -308,7 +352,12 @@ export default {
         console.error("Error fetching PNDC balance:", error);
         this.pndcBalance = "0";
       }
+      } else {
+        console.error("POND contract address is null");
+        this.pndcBalance = "0";
+      }
 
+      if (this.currentContractAddresses.shib) {
       const shibContract = new Contract(this.currentContractAddresses.shib, ERC20_ABI, provider);
       try {
         const shibTokenBalance = await shibContract.balanceOf(this.accountAddress);
@@ -322,7 +371,12 @@ export default {
         console.error("Error fetching SHIB balance:", error);
         this.shibBalance = "0";
       }
+      } else {
+        console.error("SHIB contract address is null");
+        this.shibBalance = "0";
+      }
 
+      if (this.currentContractAddresses.ppepe) {
       const ppepeContract = new Contract(this.currentContractAddresses.ppepe, ERC20_ABI, provider);
       try {
         const ppepeTokenBalance = await ppepeContract.balanceOf(this.accountAddress);
@@ -334,6 +388,10 @@ export default {
         this.ppepeBalance = this.formatBalance(formatEther(ppepeTokenBalance));
       } catch (error) {
         console.error("Error fetching PPEPE balance:", error);
+        this.ppepeBalance = "0";
+      }
+      } else {
+        console.error("PPEPE   contract address is null");
         this.ppepeBalance = "0";
       }
 
@@ -384,7 +442,6 @@ export default {
           console.log("No selected address found");
         }
       });
-
 
       this.getNetworkVersion();
     }
