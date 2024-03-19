@@ -37,7 +37,14 @@
     </div>
 
       <div v-if="selectedCard === 'mine'" class="flex flex-col justify-center w-full">
-      <MinerCard :ethBalance="ethBalance" :ppepeBalance="ppepeBalance" :accountAddress="accountAddress" @amountChanged="someMethodInMainCard" @connect="$emit('connect')" />
+      <MinerCard 
+        :ethBalance="ethBalance" 
+        :ppepeBalance="ppepeBalance" 
+        :abbreviatedPpepeBalance="abbreviatedPpepeBalance"
+        :accountAddress="accountAddress" 
+        @amountChanged="someMethodInMainCard" 
+        @connect="$emit('connect')" 
+      />
       <div class="mt-4 text-yellow-300 font-origin font-semibold text-xl sm:text-xs">
         Mine More, Earn More
       </div>
@@ -109,6 +116,10 @@
         default: "0.00"
       },
       ppepeBalance: {
+        type: String,
+        default: "0.00"
+      },
+      abbreviatedPpepeBalance: {
         type: String,
         default: "0.00"
       },

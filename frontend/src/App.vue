@@ -12,6 +12,7 @@
         :ethBalance="balance" 
         :ppepeBalance="ppepeBalance"
         :pepeBalance="pepeBalance"
+        :abbreviatedPpepeBalance="abbreviatedPpepeBalance"
         :shibBalance="shibBalance"
         :rawPpepeBalance="rawPpepeBalance"
         :rawPepeBalance="rawPepeBalance"
@@ -102,6 +103,7 @@ export default {
       balance: null,
       ppepeBalance: null,
       pepeBalance: null,
+      abbreviatedPpepeBalance: null,
       shibBalance: null,
       networkName: null,
       networkIcon: null,
@@ -272,6 +274,8 @@ export default {
             console.log("Raw Balance:", this.rawPpepeBalance.toString());
             console.log("Ppepe Balance:", this.ppepeBalance.toString());
             this.ppepeBalance = this.formatBalance(formatEther(ppepeTokenBalance));
+            this.abbreviatedPpepeBalance = this.abbreviateNumber(this.rawPpepeBalance);
+            console.log('Abbreviated Balance:', this.abbreviatedPpepeBalance);
           } catch (error) {
             console.error("Error fetching PPEPE balance:", error);
             this.ppepeBalance = "0";

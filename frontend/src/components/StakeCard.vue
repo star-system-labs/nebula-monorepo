@@ -18,7 +18,7 @@
         Vesting
       </div>
     </div>
-    <div class="currency-toggle flex cursor-pointer mb-4 rounded-xl overflow-hidden border-2 border-custom-blue shadow-md relative">
+    <div class="currency-toggle cursor-pointer mb-4 rounded-xl overflow-hidden border-2 border-custom-blue shadow-md relative">
       <div class="absolute left-0 top-0 h-full w-1/3 bg-button-active rounded-xl transition-all duration-300"
            :style="toggleStyle"></div>
       <div v-for="(currency, index) in currencies"
@@ -434,6 +434,29 @@ export default {
 </script>
 
 <style scoped>
+.currency-toggle {
+  display: flex;
+  max-width: 100%; 
+  justify-content: space-around;
+}
+
+@media (max-width: 768px) { 
+  .currency-toggle > div {
+    padding: 0 10px; 
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) { 
+  .currency-toggle > div {
+    padding: 0 5px; 
+    font-size: 0.7rem;
+  }
+}
+.currency-toggle-button {
+  width: auto; 
+}
+
 .range {
   -webkit-appearance: none;
   width: 100%;
