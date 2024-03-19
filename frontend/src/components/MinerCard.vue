@@ -27,7 +27,13 @@
 
     <transition name="expand">
       <div 
-      class="cope-sequence cursor-pointer absolute transform translate-x-[-50%] scale-x-[1] transition-transform duration-500 ease-in-out rounded-xl h-10 max-w-[90vw] sm:max-w-[70vw] md:max-w-[50vw] lg:max-w-[40vw] xl:max-w-[32vw] flex items-center justify-center bg-card-blue bg-opacity-85 text-custom-blue font-bold border-2 border-custom-blue shadow-md z-2 overflow-hidden whitespace-nowrap sm:p-2"
+      class="cope-sequence cursor-pointer absolute transform 
+        translate-x-[-50%] scale-x-[1] transition-transform 
+        duration-500 ease-in-out rounded-xl h-10 max-w-[90vw] 
+        sm:max-w-[70vw] md:max-w-[50vw] lg:max-w-[40vw] xl:max-w-[32vw] 
+        flex items-center justify-center bg-card-blue bg-opacity-88 
+        text-custom-blue font-bold border-2 border-custom-blue 
+        shadow-md z-2 overflow-hidden whitespace-nowrap sm:p-2"
         @click="toggleCopeSequence"
       >
     <span v-show="!showCopeSequence" class="w-full text-center text-xs my-xs-1 mx-1 text-yellow-300 sm:px-2.5 font-origin">
@@ -48,11 +54,12 @@
       :currency="selectedToken"
       label="You Mine:"
       :currencyLogo="getTokenLogo(selectedToken)"
-      :balance="ppepeBalance"
+      :balance="abbreviatedPpepeBalance"
       :isEditable="false"
       @amountChange="handleAmountChanged"
       :accountAddress="accountAddress"
       :quote="localQuote"
+      :isMaxSelectable="selectedToken !== 'PePe'"
     />
     
     <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mt-5"/>
@@ -85,6 +92,10 @@ export default {
       type: String,
       default: "0.00"
     },
+    abbreviatedPpepeBalance: {
+      type: String,
+      default: "0.00"
+    },
     ppepeBalance: {
       type: String,
       default: "0.00"
@@ -109,6 +120,20 @@ export default {
     };
   },
   methods: {
+    abbreviateNumber(value) {
+      let newValue = parseFloat(value);
+      if (newValue >= 1e12) {
+        return (newValue / 1e12).toFixed(2) + "T";
+      } else if (newValue >= 1e9) {
+        return (newValue / 1e9).toFixed(2) + "B";
+      } else if (newValue >= 1e6) {
+        return (newValue / 1e6).toFixed(2) + "M";
+      } else if (newValue >= 1e3) {
+        return (newValue / 1e3).toFixed(2) + "K";
+      } else {
+        return newValue.toString();
+      }
+    },
     handleQuoteObtained(quote) {
       this.localQuote = quote;
     },
