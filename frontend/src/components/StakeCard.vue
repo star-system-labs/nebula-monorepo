@@ -104,7 +104,7 @@
        lpTokenBalances: {
          PrimordialPePeLP: '0',
          PePeLP: '0',
-         ShibaLP: '0',
+         ShibLP: '0',
        },
        erc20ABI: [
          {
@@ -135,7 +135,7 @@
           lptokens: {
            PrimordialPePeLP: '0xE763297d736b73d7e37809513B7399D1F66443Ed',
            PePeLP: '0xB08eAC861c0FD07e74c3Bc6FBABe309e1F82afE5',
-           ShibaLP: '0x5e29a016b9d79ef38Cc66B3E58A08af80b26FB91',
+           ShibLP: '0x5e29a016b9d79ef38Cc66B3E58A08af80b26FB91',
           }
         },
         sepolia: {
@@ -157,7 +157,7 @@
           lptokens: {
            PrimordialPePeLP: '0xE763297d736b73d7e37809513B7399D1F66443Ed',
            PePeLP: '0xB08eAC861c0FD07e74c3Bc6FBABe309e1F82afE5',
-           ShibaLP: '0x5e29a016b9d79ef38Cc66B3E58A08af80b26FB91',
+           ShibLP: '0x5e29a016b9d79ef38Cc66B3E58A08af80b26FB91',
           }
         },
        },
@@ -263,49 +263,56 @@
        console.log(`Detected and set current network to: ${this.currentNetwork}`);
      },
      async handleStakeClick() {
-       try {
-         if (!this.currentNetwork) {
-           console.error('Network not detected or unsupported');
-           return;
-         }
-         const provider = new ethers.BrowserProvider(window.ethereum);
-         const signer = await provider.getSigner();
- 
-         let contractAddress, contractMethod, timeIndex;
-         if (this.selectedOption === 'Staking') {
-           contractAddress = this.stakingcontractAddresses[this.selectedToken];
-           contractMethod = 'stakeLPToken';
-         } else if (this.selectedOption === 'Vesting') {
-           contractAddress = this.vestingContractAddresses[this.selectedToken];
-           contractMethod = 'vestTokens';
-           timeIndex = this.vestingPeriod / 30 - 1;
- 
-         } else {
-           console.error('Invalid option selected');
-           return;
-         }
-         if (!contractAddress) {
-           console.error(`No contract address found for option: ${this.selectedOption} and token: ${this.selectedToken}`);
-           return;
-         }
-         console.log(`Using contract address: ${contractAddress} for ${this.selectedOption}`);
-         const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
-         const tokenContract = new ethers.Contract(this.currentTokenContractAddress, TokenABI, signer);
-         const approveTx = await tokenContract.approve(contractAddress, amountInWei);
-         await approveTx.wait();
-         console.log("Tokens approved");
-         const actionContract = new ethers.Contract(contractAddress, this.selectedOption === 'Staking' ? LPStakingABI : VestingABI, signer);
-         let actionTx;
-         if (this.selectedOption === 'Staking') {
-         actionTx = await actionContract[contractMethod](amountInWei);
-         } else if (this.selectedOption === 'Vesting') {
-         actionTx = await actionContract[contractMethod](amountInWei, timeIndex);
-         }
-         await actionTx.wait();
-         console.log(`${this.selectedOption} action completed successfully`);
-       } catch (error) {
-         console.error("Error during action:", error);
-       }
+      try {
+        if (!this.currentNetwork) {
+          console.error('Network not detected or unsupported');
+          return;
+        }
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+
+        let contractAddress, contractABI, contractMethod, timeIndex, tokenContractAddress;
+        if (this.selectedOption === 'Staking') {
+          contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
+          contractABI = LPStakingABI;
+          contractMethod = 'stakeLPToken';
+          tokenContractAddress = this.contractAddresses[this.currentNetwork].lptokens[this.selectedToken + 'LP'];
+        } else if (this.selectedOption === 'Vesting') {
+          contractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
+          contractABI = VestingABI;
+          contractMethod = 'vestTokens';
+          timeIndex = this.vestingPeriod / 30 - 1;
+          tokenContractAddress = this.contractAddresses[this.currentNetwork].tokens[this.selectedToken.toLowerCase()];
+        } else {
+          console.error('Invalid option selected');
+          return;
+        }
+
+        if (!contractAddress || !tokenContractAddress) {
+          console.error(`No contract address found for option: ${this.selectedOption} and token: ${this.selectedToken}`);
+          return;
+        }
+
+        console.log(`Using contract address: ${contractAddress} for ${this.selectedOption}`);
+        const amountInWei = ethers.utils.parseUnits(this.enteredAmountData, 18);
+
+        const tokenContract = new ethers.Contract(tokenContractAddress, TokenABI, signer);
+        const approveTx = await tokenContract.approve(contractAddress, amountInWei);
+        await approveTx.wait();
+        console.log("Tokens approved");
+
+        const actionContract = new ethers.Contract(contractAddress, contractABI, signer);
+        let actionTx;
+        if (this.selectedOption === 'Staking') {
+          actionTx = await actionContract[contractMethod](amountInWei);
+        } else if (this.selectedOption === 'Vesting') {
+          actionTx = await actionContract[contractMethod](amountInWei, timeIndex);
+        }
+        await actionTx.wait();
+        console.log(`${this.selectedOption} action completed successfully`);
+      } catch (error) {
+        console.error("Error during action:", error);
+      }
      },
      updateWalletBalance() {
        this.walletBalanceData = this.selectedTokenBalance;
@@ -356,8 +363,8 @@
              balance = this.lpTokenBalances.PePeLP;
              break;
            case 'Shib':
-             console.log("ShibaLP Balance: ", this.lpTokenBalances.ShibaLP);
-             balance = this.lpTokenBalances.ShibaLP;
+             console.log("ShibLP Balance: ", this.lpTokenBalances.ShibLP);
+             balance = this.lpTokenBalances.ShibLP;
              break;
          }
        } else {

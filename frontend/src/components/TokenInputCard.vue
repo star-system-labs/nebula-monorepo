@@ -88,7 +88,7 @@ export default {
       const keyMapping = {
         'ppepe': 'PrimordialPePeLP',
         'pepe': 'PePeLP',
-        'shib': 'ShibaLP',
+        'shib': 'ShibLP',
       };
       const normalizedCurrency = this.currency.toLowerCase();
       const mappedKey = keyMapping[normalizedCurrency] || normalizedCurrency;
