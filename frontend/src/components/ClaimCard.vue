@@ -6,13 +6,13 @@
        <div class="absolute left-0 top-0 h-full w-1/2 bg-button-active rounded-xl transition-all duration-300"
             :class="selectedOption === 'Staking' ? 'left-0' : 'left-1/2'"></div>
        <div 
-         class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10"
+         class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs md:text-sm lg:text-lg"
          :class="selectedOption === 'Staking' ? 'text-yellow-300' : 'text-custom-blue-inactive'"
          @click="setSelectedOption('Staking')">
          LP Staking
        </div>
        <div 
-         class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10"
+         class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs md:text-sm lg:text-lg"
          :class="selectedOption === 'Vesting' ? 'text-yellow-300' : 'text-custom-blue-inactive'"
          @click="setSelectedOption('Vesting')">
          Vesting
@@ -24,7 +24,7 @@
        <div v-for="(currency, index) in currencies"
             :key="currency"
             :class="selectedToken === currency ? 'text-yellow-300' : 'text-custom-blue-inactive'"
-            class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10"
+            class="flex items-center justify-center text-center py-1 px-4 sm:px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs md:text-sm lg:text-lg"
             @click.stop="setSelectedCurrency(currency)">
          <img :src="currencyLogos[index]" alt="Currency Logo" class="w-6 h-6 rounded-full mr-2">{{ currency }}
        </div>
