@@ -22,6 +22,7 @@ module.exports = {
     mainnet: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
       accounts: [process.env.MAINNET_PRIV_KEY],
+      saveDeployments: true,
       gasPrice: 48000000000,
       gas: 10000000,
     },
@@ -29,7 +30,7 @@ module.exports = {
       url: `https://sepolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
       accounts: [process.env.SEPOLIA_PRIV_KEY],
       saveDeployments: true,
-      gasPrice: 20000000000,
+      gasPrice: 40000000000,
       gas: 12000000,
     },
   },
