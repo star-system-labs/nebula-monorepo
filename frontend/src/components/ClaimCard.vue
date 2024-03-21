@@ -164,7 +164,7 @@
        vestingPeriod: 30,
        selectedToken: 'PPePe',
        loading: false,
-       stakeButtonText: 'Stake',
+       stakeButtonText: 'Stake LP',
        currencies: ['PPePe', 'PePe', 'Shib'],
        currencyLogos: [
          require('@/assets/ppepe.png'),
@@ -240,10 +240,10 @@
        console.log("Selected Option: ", this.selectedOption);
    
        if (option === 'Staking') {
-         this.stakeButtonText = 'Staking';
+         this.stakeButtonText = 'Stake LP';
          console.log("Selected Contract Address: ", this.selectedStakingContractAddress);
        } else {
-         this.stakeButtonText = 'Vesting';
+         this.stakeButtonText = 'Vest Tokens';
          console.log("Selected Contract Address: ", this.selectedVestingContractAddress);
        }
      },
@@ -257,10 +257,14 @@
        this.walletBalanceData = this.selectedTokenBalance;
      },
      async detectNetwork() {
-       const provider = new ethers.BrowserProvider(window.ethereum);
-       const network = await provider.getNetwork();
-       this.currentNetwork = network.chainId === 1 ? 'mainnet' : 'sepolia';
-       console.log(`Detected and set current network to: ${this.currentNetwork}`);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await provider.getNetwork();
+      const newNetwork = network.chainId === 1 ? 'mainnet' : 'sepolia';
+      if (this.currentNetwork !== newNetwork) {
+        this.currentNetwork = newNetwork;
+        console.log(`Detected and set current network to: ${this.currentNetwork}`);
+        this.$emit('networkChanged', this.currentNetwork);
+      }
      },
      async handleStakeClick() {
       try {
@@ -342,7 +346,7 @@
        const days = this.vestingPeriod;
        let monthString = months === 1 ? "month" : "months";
        let dayString = days === 1 ? "day" : "days";
-       let formattedString = `${months} ${monthString} ${days} ${dayString}`;
+       let formattedString = `${months} ${monthString} / ${days} ${dayString}`;
        return formattedString;
      },
      selectedCurrencyLogo() {
@@ -393,13 +397,16 @@
        return { left: `${percentage}%` };
      },
    },
-   async mounted() {
-     this.detectNetwork();
+   mounted() {
+    this.detectNetwork();
       if (window.ethereum) {
         window.ethereum.on('accountsChanged', (accounts) => {
           this.$emit('update:accountAddress', accounts[0]);
           this.fetchLPTokenBalances();
           this.fetchTokenBalances();
+        });
+        window.ethereum.on('chainChanged', (_chainId) => {
+        window.location.reload(_chainId);
         });
         this.subscribeToNewBlocks();
         this.fetchLPTokenBalances();
