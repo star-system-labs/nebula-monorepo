@@ -203,14 +203,19 @@
          console.log("No account address provided.");
          return;
        }
- 
+       try {
        const provider = new ethers.BrowserProvider(window.ethereum);
        for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].tokens)) {
          const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
          const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
          const balanceInEther = ethers.formatEther(balanceInWei);
+         const balance = await tokenContract.balanceOf(this.accountAddress);
+         console.log("Token Balance:", balance.toString());
          this.tokenBalances[tokenName] = balanceInEther;
          console.log(`${tokenName} (${tokenAddress}) balance:`, this.tokenBalances[tokenName]);
+      }
+     } catch (error) {
+        console.error("Error fetching token balances:", error);
        }
      },
      async fetchLPTokenBalances() {
@@ -298,7 +303,7 @@
         }
 
         console.log(`Using contract address: ${contractAddress} for ${this.selectedOption}`);
-        const amountInWei = ethers.utils.parseUnits(this.enteredAmountData, 18);
+        const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
 
         const tokenContract = new ethers.Contract(tokenContractAddress, TokenABI, signer);
         const approveTx = await tokenContract.approve(contractAddress, amountInWei);
