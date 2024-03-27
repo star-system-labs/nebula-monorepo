@@ -31,42 +31,44 @@
       </div>
      </div>
     </div>
- 
-     <TokenInputCard
-       class="w-[350px] mb-4 text-teal font-origin"
-       :isToken="true"
-       :isLPStaking="selectedOption === 'Staking'"
-       :selectedOption="selectedOption"
-       :lpTokenBalances="lpTokenBalances"
-       :tokenBalances="tokenBalances"
-       :rawBalance="selectedToken === 'PPePe' ? rawPpepeBalance : selectedToken === 'PePe' ? rawPepeBalance : selectedToken === 'Shib' ? rawShibBalance : '0'"
-       :currency="selectedToken"
-       :balance="selectedTokenBalance"
-       label="You Stake:"
-       :currencyLogo="selectedCurrencyLogo"
-       :tokenName="setSelectedCurrency"
-       :isEditable="true"
-       :isMaxSelectable="true"
-       @amountChanged="handleAmountChanged"
-       :accountAddress="accountAddress"
-     />
- 
-     <div v-if="selectedOption === 'Vesting'" class="my-4 flex flex-col items-center">
-       <input type="range" min="30" max="360" step="30" v-model="vestingPeriod" class="range range-primary w-full max-w-xs" @input="adjustVestingPeriod">
-       <div class="text-teal font-origin mt-2">Vesting Period: {{ formattedVestingPeriod }}</div>
-     </div>
- 
+
+    <div v-if="selectedOption === 'Staking'" class="staking-rewards-container">
+      <div class="flex flex-col items-center justify-between border-custom-blue bg-card-blue bg-opacity-100 p-4 rounded-xl w-full mb-4">
+        <div class="text-yellow-300 font-origin text-center mb-4">Primordial Emission: {{ primordialEmission }}</div>
+        <div class="flex items-center justify-between w-full">
+          <div>
+            <div class="text-teal font-origin mb-2 mr-2">LP Staked</div>
+            <div class="text-yellow-300 font-origin">{{ stakedAmount }}</div>
+          </div>
+          <div>
+            <div class="text-teal font-origin mb-2 ml-2">{{ selectedToken === 'PPePe' ? 'SDIV Rewards' : 'PPePe Rewards' }}</div>
+            <div class="text-yellow-300 font-origin">{{ rewardsOwed }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+     <div class="mb-6">
      <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mb-6"/>
-     <button v-else @click="handleStakeClick" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6">
-       <SpinnerSVG v-if="loading" />
-       <span v-else>{{ stakeButtonText }}</span>
-     </button>
-   </div>
+      <button v-else-if="selectedToken === 'PPePe'" disabled class="bg-gradient-to-r font-origin font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-not-allowed text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 w-full text-xs md:text-sm lg:text-lg">
+        SDIV REWARDS COMING SOON
+      </button>
+        <div v-else class="flex justify-between w-full">
+          <button @click="handleUnstakeClick" :disabled="loadingUnstake" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mr-5">
+            <SpinnerSVG v-if="loadingUnstake" />
+            <span v-else>Unstake</span>
+          </button>
+          <button @click="handleClaimClick" :disabled="loadingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700">
+            <SpinnerSVG v-if="loadingClaim" />
+            <span v-else>Claim</span>
+          </button>
+        </div>
+      </div>
+    </div>
  </template>
  
  <script>
  import ConnectWalletButton from './ConnectWalletButton.vue';
- import TokenInputCard from './TokenInputCard.vue';
  import SpinnerSVG from './SpinnerSVG.vue';
  import LPStakingABI from '../ABI/LPStakingABI.json';
  import TokenABI from '../ABI/IERC20.json';
@@ -77,7 +79,6 @@
  export default {
    name: 'ClaimCard',
    components: {
-     TokenInputCard,
      ConnectWalletButton,
      SpinnerSVG
    },
@@ -95,6 +96,10 @@
    },
    data() {
      return {
+      primordialEmission:'0',
+       stakedAmountWei: '0',
+       stakedAmount: '0',
+       rewardsOwed: '0',
        currentNetwork: 'mainnet',
        tokenBalances: {
          ppepe: '0',
@@ -140,7 +145,7 @@
         },
         sepolia: {
           staking: {
-           PPePe: '0x39904563A3F0414aDfF5F608BE6ecA6Ea6Da023A',
+           PPePe: '0x00',
            PePe: '0x39904563A3F0414aDfF5F608BE6ecA6Ea6Da023A',
            Shib: '0xAc2C320697B338a168556bd6b909584416AaaEc4',
           },
@@ -163,8 +168,10 @@
        },
        vestingPeriod: 30,
        selectedToken: 'PPePe',
+       loadingClaim: false,
+       loadingUnstake: false,
        loading: false,
-       stakeButtonText: 'Stake LP',
+       claimButtonText: 'Claim',
        currencies: ['PPePe', 'PePe', 'Shib'],
        currencyLogos: [
          require('@/assets/ppepe.png'),
@@ -177,6 +184,51 @@
      };
    },
    methods: {
+     async fetchPrimordialEmission() {
+      try {
+        if (!this.accountAddress) return;
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
+        const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
+        const emission = await contract.getPrimordialEmission(this.accountAddress);
+        this.primordialEmission = emission;
+      } catch (error) {
+        console.error("Error fetching Primordial Emission:", error);
+      }
+     },
+     async fetchStakingInfo() {
+      try {
+      if (!this.accountAddress || this.selectedOption !== 'Staking') return;
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
+      const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
+      const stakerInfo = await contract.getStakerInfo(this.accountAddress);
+      console.log(`Fetching staking info for address: ${this.accountAddress}`);
+      contract.getStakerInfo(this.accountAddress)
+      .then((response) => {
+        console.log('Raw response:', response);
+        this.stakedAmountWei = ethers.formatUnits(stakerInfo.stakedAmount, 18);
+        this.stakedAmount = this.abbreviateNumber(parseFloat(ethers.formatEther(stakerInfo.stakedAmount)).toFixed(2));
+        this.lpStakeTime = stakerInfo.lpStakeTime.toString();
+        const lpClaimTimeInEther = ethers.formatUnits(stakerInfo.lpClaimTime, 'ether');
+        this.lpClaimTime = parseFloat(lpClaimTimeInEther).toFixed(2);
+      })
+      .catch((error) => {
+        console.error('Error fetching staking info:', error);
+      });
+
+      console.log(`Staked Amount: ${ethers.formatEther(stakerInfo[0])}`);
+      console.log(`LP Stake Time: ${stakerInfo[1].toString()}`);
+      console.log(`LP Claim Time: ${stakerInfo[2].toString()}`);
+
+      const basePrimordialOwed = await contract.getBasePrimordialOwed(stakerInfo.stakedAmount, this.accountAddress);
+      this.rewardsOwed = parseFloat(ethers.formatEther(basePrimordialOwed)).toFixed(4);
+      } catch (error) {
+        console.error("Error fetching staking info:", error);
+      }
+     },
      subscribeToNewBlocks() {
       const provider = new ethers.BrowserProvider(window.ethereum);
       provider.on('block', () => {
@@ -203,14 +255,19 @@
          console.log("No account address provided.");
          return;
        }
- 
+       try{
        const provider = new ethers.BrowserProvider(window.ethereum);
        for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].tokens)) {
          const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
          const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
          const balanceInEther = ethers.formatEther(balanceInWei);
+         const balance = await tokenContract.balanceOf(this.accountAddress);
+         console.log("Token Balance:", balance.toString());
          this.tokenBalances[tokenName] = balanceInEther;
          console.log(`${tokenName} (${tokenAddress}) balance:`, this.tokenBalances[tokenName]);
+       }
+      } catch (error) {
+        console.error("Error fetching token balances:", error);
        }
      },
      async fetchLPTokenBalances() {
@@ -266,6 +323,54 @@
         this.$emit('networkChanged', this.currentNetwork);
       }
      },
+     async handleUnstakeClick() {
+      try {
+        this.loadingUnstake = true;
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
+        const contract = new ethers.Contract(contractAddress, LPStakingABI, signer);
+
+        const stakedAmount = ethers.parseUnits(this.stakedAmountWei, 18);
+        const tx = await contract.unstakeLPToken(stakedAmount);
+        await tx.wait();
+
+        this.loadingUnstake = false;
+        // Refresh the balance
+      } catch (error) {
+        this.loadingUnstake = false;
+        console.error("Error during unstake:", error);
+      }
+     },
+     async handleClaimClick() {
+      try {
+        this.loadingClaim = true;
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+
+        const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
+        if (!contractAddress) {
+          console.error('Contract address is undefined');
+          this.loadingClaim = false;
+          return;
+        }
+
+        const contract = new ethers.Contract(contractAddress, LPStakingABI, signer);
+
+        const stakedAmount = ethers.parseUnits(this.stakedAmountWei, 18);
+
+        console.log("CalimClick stakedAmount", stakedAmount);
+
+        const tx = await contract.claimReward(stakedAmount);
+        await tx.wait();
+
+        this.loadingClaim = false;
+        // Refresh balances
+      } catch (error) {
+        this.loadingClaim = false;
+        console.error("Error during claim:", error);
+      }
+     },
      async handleStakeClick() {
       try {
         if (!this.currentNetwork) {
@@ -298,7 +403,7 @@
         }
 
         console.log(`Using contract address: ${contractAddress} for ${this.selectedOption}`);
-        const amountInWei = ethers.utils.parseUnits(this.enteredAmountData, 18);
+        const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
 
         const tokenContract = new ethers.Contract(tokenContractAddress, TokenABI, signer);
         const approveTx = await tokenContract.approve(contractAddress, amountInWei);
@@ -404,6 +509,7 @@
           this.$emit('update:accountAddress', accounts[0]);
           this.fetchLPTokenBalances();
           this.fetchTokenBalances();
+          this.fetchPrimordialEmission();
         });
         window.ethereum.on('chainChanged', (_chainId) => {
         window.location.reload(_chainId);
@@ -414,10 +520,18 @@
       }
    },
    watch: {
+     selectedToken(newVal, oldVal) {
+      if (newVal !== oldVal) {
+        this.fetchStakingInfo();
+        this.fetchPrimordialEmission();
+      } 
+     },
      accountAddress(newVal, oldVal) {
        if (newVal !== oldVal) {
          this.fetchLPTokenBalances();
          this.fetchTokenBalances();
+         this.fetchStakingInfo();
+         this.fetchPrimordialEmission();
        }
      },
      rawPpepeBalance(newVal) {
@@ -448,6 +562,18 @@
  </script>
  
  <style scoped>
+ .staking-info {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+.info {
+  display: flex;
+  flex-direction: column;
+}
  .range {
    -webkit-appearance: none;
    width: 100%;
@@ -480,5 +606,6 @@
    border: none;
  }
  </style>
+ 
  
  

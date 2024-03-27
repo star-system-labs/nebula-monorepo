@@ -59,7 +59,7 @@
       @amountChange="handleAmountChanged"
       :accountAddress="accountAddress"
       :quote="localQuote"
-      :isMaxSelectable="selectedToken !== 'PePe'"
+      :isMaxSelectable="false"
     />
     
     <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mt-5"/>
