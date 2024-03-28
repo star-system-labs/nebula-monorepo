@@ -63,7 +63,7 @@
             :rawPndcBalance="rawPndcBalance"
             :rawShibBalance="rawShibBalance"
             :contract-addresses="currentContractAddresses"
-            @connect="$emit('connect')"
+            @connect="$emit('handleConnect')"
             />
       </div>
       <div v-if="selectedCard === 'stake'" class="w-full">
@@ -129,7 +129,7 @@
       },
       pondBalance: {
         type: String,
-        defaults: "0.00"
+        default: "0.00"
       },
       shibBalance: {
         type: String,
@@ -137,15 +137,15 @@
       },
       rawPpepeBalance: {
         type: String,
-        defaults: "0.00"
+        default: "0.00"
       },
       rawPepeBalance: {
         type: String,
-        defaults: "0.00"
+        default: "0.00"
       },
       rawShibBalance: {
         type: String,
-        defaults: "0.00"
+        default: "0.00"
       },
     },
     methods: {
@@ -158,10 +158,10 @@
       }
     },
     mounted() {
-      console.log("Contract Addresses:", this.contractAddresses);
+      //console.log("Contract Addresses:", this.contractAddresses);
       const savedCard = localStorage.getItem('selectedCard');
-      if (savedCard) {
-        this.selectedCard = savedCard;
+      if (savedCard && savedCard !== this.selectedCard) {
+        this.setSelectedCard(savedCard);
       }
     }
   }

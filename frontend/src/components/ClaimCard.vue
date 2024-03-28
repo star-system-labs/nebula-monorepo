@@ -53,12 +53,14 @@
         <p class="font-origin text-yellow-300">Vesting Slots</p>          
         <div :class="{ 'flex justify-center': vests.length === 1, 'grid grid-cols-1 md:grid-cols-2 gap-4': vests.length > 1 }">
           <div v-for="(vest, index) in vests" :key="index" 
-              class="mb-4 last:mb-0 w-full max-w-md mx-auto cursor-pointer relative" 
-              @click="selectVestSlot(index)">
-          <div :class="[
-                'flex justify-between items-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-900 transition-colors duration-300',
-                selectedVestIndex === index ? 'border-green-500' : 'border-custom-blue', '!important'
-                ]"> 
+            class="mb-4 last:mb-0 w-full max-w-md mx-auto cursor-pointer relative" 
+            @click="selectVestSlot(index)"
+            :class="{
+              'flex justify-between items-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-900 focus:border-green-500 transition-colors duration-300': true,
+              'border-2 border-custom-blue': selectedVestIndex !== index,
+              'border-2 border-green-500': selectedVestIndex === index,
+            }">
+          <div>
             <div class="text-left">
               <p class="font-origin text-yellow-300">Amount: {{ abbreviateNumber(ethers.formatEther(vest.amount)) || 'Calculating...' }}</p>
               <p class="font-origin text-yellow-300">Locked: {{ lockedTimes[index] || 'Calculating...' }}</p>
@@ -79,7 +81,7 @@
     </div>
 
      <div class="mb-6">
-     <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="w-full mb-6"/>
+     <ConnectWalletButton v-if="!accountAddress" @connect="$emit('handleConnect')" class="w-full mb-6"/>
      <button v-else-if="selectedToken === 'PPePe'" disabled class="bg-gradient-to-r font-origin from-gray-600 to-gray-900 text-yellow-300 px-4 py-2 rounded-xl cursor-not-allowed text-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-700 w-full">
        SDIV REWARDS COMING SOON
      </button>
@@ -113,16 +115,16 @@
      SpinnerSVG
    },
    props: {
+    accountAddress: {
+       type: String,
+       default: null
+     },
      rawPpepeBalance: String,
      rawPepeBalance: String,
      rawShibBalance: String,
      ppepeBalance: String,
      pepeBalance: String,
      shibBalance: String,
-     accountAddress: {
-       type: String,
-       default: null
-     },
    },
    data() {
      return {
@@ -217,10 +219,16 @@
      };
    },
    methods: {
+     handleConnect() {
+      this.$emit('connect');
+     },
+     updateVests(newVests) {
+      this.vests = [...newVests];
+     },
      selectVestSlot(index) {
       this.selectedVestIndex = index;
       console.log("Selected!!!!!!",this.selectedVestIndex)
-      this.$forceUpdate();
+      //this.$forceUpdate();
      },
      calculateEstimatedRewards(vest) {
       const ethers = require('ethers');
@@ -651,13 +659,6 @@
       }
    },
    watch: {
-     selectedToken(newVal, oldVal) {
-      if (newVal !== oldVal) {
-        this.fetchStakingInfo();
-        this.fetchPrimordialEmission();
-        this.fetchVestingSlots();
-      } 
-     },
      accountAddress(newVal, oldVal) {
        if (newVal !== oldVal) {
          this.fetchLPTokenBalances();
@@ -665,6 +666,13 @@
          this.fetchStakingInfo();
          this.fetchPrimordialEmission();
        }
+     },
+     selectedToken(newVal, oldVal) {
+      if (newVal !== oldVal) {
+        this.fetchStakingInfo();
+        this.fetchPrimordialEmission();
+        this.fetchVestingSlots();
+      } 
      },
      rawPpepeBalance(newVal) {
        console.log("New rawPpepeBalance:", newVal);
