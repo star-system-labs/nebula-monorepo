@@ -290,7 +290,11 @@
           contractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
           contractABI = VestingABI;
           contractMethod = 'vestTokens';
-          timeIndex = this.vestingPeriod / 30 - 1;
+          if (this.vestingPeriod === 365) {
+            timeIndex = 11; // Directly set to 11 for 12 months, as indices are 0-based
+          } else {
+            timeIndex = Math.round(this.vestingPeriod / 30) - 1;
+          }
           tokenContractAddress = this.contractAddresses[this.currentNetwork].tokens[this.selectedToken.toLowerCase()];
         } else {
           console.error('Invalid option selected');
@@ -306,7 +310,7 @@
         const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
 
         const tokenContract = new ethers.Contract(tokenContractAddress, TokenABI, signer);
-        const approveTx = await tokenContract.approve(contractAddress, amountInWei);
+        const approveTx = await tokenContract.approve(contractAddress, (amountInWei + 1000000000000000000n));
         await approveTx.wait();
         console.log("Tokens approved");
 
