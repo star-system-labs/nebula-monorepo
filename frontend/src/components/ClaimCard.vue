@@ -52,23 +52,25 @@
       <div v-if="vests && vests.length" class="w-full max-w-sm mx-auto md:max-w-md lg:max-w-lg">
         <p class="font-origin text-yellow-300">Vesting Slots</p>          
         <div :class="{ 'flex justify-center': vests.length === 1, 'grid grid-cols-1 md:grid-cols-2 gap-4': vests.length > 1 }">
-
-        <div v-for="(vest, index) in vests" :key="index" class="mb-4 last:mb-0 w-full max-w-md mx-auto" @click="selectVestSlot(index)">
-            <!-- <div v-for="(vest, index) in vests" :key="index" class="bg-card-blue bg-opacity-85 p-4 rounded-lg border-custom-blue"> -->
-
-          <div class="flex justify-between items-center bg-card-blue bg-opacity-85 p-4 rounded-lg border-custom-blue">
+          <div v-for="(vest, index) in vests" :key="index" 
+              class="mb-4 last:mb-0 w-full max-w-md mx-auto cursor-pointer relative" 
+              @click="selectVestSlot(index)">
+          <div :class="[
+                'flex justify-between items-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-900 transition-colors duration-300',
+                selectedVestIndex === index ? 'border-green-500' : 'border-custom-blue', '!important'
+                ]"> 
             <div class="text-left">
               <p class="font-origin text-yellow-300">Amount: {{ abbreviateNumber(ethers.formatEther(vest.amount)) || 'Calculating...' }}</p>
               <p class="font-origin text-yellow-300">Locked: {{ lockedTimes[index] || 'Calculating...' }}</p>
               <p class="font-origin text-yellow-300">Remaining: {{ calculateTimeLeft(vest.endTime) || 'Calculating...' }}</p>
               <p class="font-origin text-yellow-300">APR: {{ (vest.apr)+'%' || 'Calculating...' }}</p>
               <p class="font-origin text-yellow-300">Est. Rewards: {{ abbreviateNumber(calculateEstimatedRewards(vest)) || 'Calculating...' }}</p>
-              <!-- <button @click="selectVestSlot(index)" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Select 
-              </button> -->
-             </div>
+            </div>
+            <div v-if="selectedVestIndex === index" class="absolute top-0 right-0 p-1">
+              <img src="@/assets/check.png" alt="Selected" class="w-4 h-4">
+            </div>
           </div>
-        </div>
+          </div>
         </div>
       </div>
       <div v-else class="font-origin text-yellow-300">
@@ -124,7 +126,7 @@
    },
    data() {
      return {
-       selectedVestingIndex: null,
+       selectedVestIndex: null,
        lockedTimes: {},
        vests: [],
        primordialEmission:'0',
@@ -215,21 +217,10 @@
      };
    },
    methods: {
-     async selectVestSlot(index) {
+     selectVestSlot(index) {
       this.selectedVestIndex = index;
       console.log("Selected!!!!!!",this.selectedVestIndex)
-      // if (!this.accountAddress || !this.selectedToken) return; 
-      // const provider = new ethers.BrowserProvider(window.ethereum);
-      // await provider.send("eth_requestAccounts", []);
-      // const network = await provider.getNetwork();
-      // console.log(`Current network: ${network.name}`);
-      // const vestingContractAddress = this.contractAddresses[network.name].vesting[this.selectedToken];
-      // console.log(`Using vesting contract address: ${vestingContractAddress}`);
-      // const vestingContract = new ethers.Contract(vestingContractAddress, VestingABI, provider);
-      // const contractVestIndex = vestingContract.getAllVests(provider);
-      // const contractSlotIndex = vestingContract.getAllSlots(provider);
-      // console.log('Selected vesting vest contract index:', contractVestIndex);
-      // console.log('Selected vesting slot contract index:', contractSlotIndex);
+      this.$forceUpdate();
      },
      calculateEstimatedRewards(vest) {
       const ethers = require('ethers');
