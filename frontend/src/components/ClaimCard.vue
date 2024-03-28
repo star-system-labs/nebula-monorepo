@@ -48,20 +48,48 @@
       </div>
     </div>
 
+    <div v-if="selectedOption === 'Vesting'" class="flex flex-col items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto">
+      <div v-if="vests && vests.length" class="w-full max-w-sm mx-auto md:max-w-md lg:max-w-lg">
+        <p class="font-origin text-yellow-300">Vesting Slots</p>          
+        <div :class="{ 'flex justify-center': vests.length === 1, 'grid grid-cols-1 md:grid-cols-2 gap-4': vests.length > 1 }">
+
+        <div v-for="(vest, index) in vests" :key="index" class="mb-4 last:mb-0 w-full max-w-md mx-auto" @click="selectVestSlot(index)">
+            <!-- <div v-for="(vest, index) in vests" :key="index" class="bg-card-blue bg-opacity-85 p-4 rounded-lg border-custom-blue"> -->
+
+          <div class="flex justify-between items-center bg-card-blue bg-opacity-85 p-4 rounded-lg border-custom-blue">
+            <div class="text-left">
+              <p class="font-origin text-yellow-300">Amount: {{ abbreviateNumber(ethers.formatEther(vest.amount)) || 'Calculating...' }}</p>
+              <p class="font-origin text-yellow-300">Locked: {{ lockedTimes[index] || 'Calculating...' }}</p>
+              <p class="font-origin text-yellow-300">Remaining: {{ calculateTimeLeft(vest.endTime) || 'Calculating...' }}</p>
+              <p class="font-origin text-yellow-300">APR: {{ (vest.apr)+'%' || 'Calculating...' }}</p>
+              <p class="font-origin text-yellow-300">Est. Rewards: {{ abbreviateNumber(calculateEstimatedRewards(vest)) || 'Calculating...' }}</p>
+              <!-- <button @click="selectVestSlot(index)" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Select 
+              </button> -->
+             </div>
+          </div>
+        </div>
+        </div>
+      </div>
+      <div v-else class="font-origin text-yellow-300">
+        No active vesting slots found
+      </div>
+    </div>
+
      <div class="mb-6">
-     <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mb-6"/>
-      <button v-else-if="selectedToken === 'PPePe'" disabled class="bg-gradient-to-r font-origin font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-not-allowed text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 w-full text-xs md:text-sm lg:text-lg">
-        SDIV REWARDS COMING SOON
+     <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="w-full mb-6"/>
+     <button v-else-if="selectedToken === 'PPePe'" disabled class="bg-gradient-to-r font-origin from-gray-600 to-gray-900 text-yellow-300 px-4 py-2 rounded-xl cursor-not-allowed text-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-700 w-full">
+       SDIV REWARDS COMING SOON
+     </button>
+     <div v-else class="flex justify-between w-full">
+       <button @click="handleUnstakeClick" :disabled="loadingUnstake" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700">
+        <SpinnerSVG v-if="loadingUnstake" />
+        <span v-else>Unstake LP</span>
       </button>
-        <div v-else class="flex justify-between w-full">
-          <button @click="handleUnstakeClick" :disabled="loadingUnstake" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mr-5">
-            <SpinnerSVG v-if="loadingUnstake" />
-            <span v-else>Unstake</span>
-          </button>
-          <button @click="handleClaimClick" :disabled="loadingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700">
+      <button @click="handleClaimClick" :disabled="loadingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700">
             <SpinnerSVG v-if="loadingClaim" />
             <span v-else>Claim</span>
-          </button>
+        </button>
         </div>
       </div>
     </div>
@@ -96,7 +124,10 @@
    },
    data() {
      return {
-      primordialEmission:'0',
+       selectedVestingIndex: null,
+       lockedTimes: {},
+       vests: [],
+       primordialEmission:'0',
        stakedAmountWei: '0',
        stakedAmount: '0',
        rewardsOwed: '0',
@@ -184,6 +215,110 @@
      };
    },
    methods: {
+     async selectVestSlot(index) {
+      this.selectedVestIndex = index;
+      console.log("Selected!!!!!!",this.selectedVestIndex)
+      // if (!this.accountAddress || !this.selectedToken) return; 
+      // const provider = new ethers.BrowserProvider(window.ethereum);
+      // await provider.send("eth_requestAccounts", []);
+      // const network = await provider.getNetwork();
+      // console.log(`Current network: ${network.name}`);
+      // const vestingContractAddress = this.contractAddresses[network.name].vesting[this.selectedToken];
+      // console.log(`Using vesting contract address: ${vestingContractAddress}`);
+      // const vestingContract = new ethers.Contract(vestingContractAddress, VestingABI, provider);
+      // const contractVestIndex = vestingContract.getAllVests(provider);
+      // const contractSlotIndex = vestingContract.getAllSlots(provider);
+      // console.log('Selected vesting vest contract index:', contractVestIndex);
+      // console.log('Selected vesting slot contract index:', contractSlotIndex);
+     },
+     calculateEstimatedRewards(vest) {
+      const ethers = require('ethers');
+      const amountInEther = ethers.formatUnits(vest.amount, 'ether');
+      const annualReward = (parseFloat(amountInEther) * vest.apr) / 100;
+      const vestingPeriodInMonths = (vest.endTime - vest.startTime) / (30 * 24 * 60 * 60);
+      const monthlyReward = annualReward / 12;
+      const estimatedRewards = monthlyReward * vestingPeriodInMonths;
+      return Number(estimatedRewards.toFixed(2));
+     },
+     calculateTimeLeft(endTime) {
+      const now = Date.now();
+      const endTimeDate = new Date(endTime * 1000);
+      const timeDiff = endTimeDate - now;
+      if (timeDiff <= 30 * 24 * 60 * 60 * 1000) {
+        return Math.ceil(timeDiff / (24 * 60 * 60 * 1000)) + ' days';
+      } else {
+        return Math.ceil(timeDiff / (30 * 24 * 60 * 60 * 1000)) + ' mos.';
+      }
+     },
+     async fetchAllSlots() {
+      if (!this.accountAddress || !this.selectedToken) return;
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const vestingContractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
+      const vestingContract = new ethers.Contract(vestingContractAddress, VestingABI, provider);
+
+      try {
+        const [slotsAvailability, vests] = await vestingContract.getAllSlots(this.accountAddress);
+        this.vests = vests.filter((vest, index) => slotsAvailability[index]).map((vest, index) => ({
+          index: index,
+          amount: vest.amount.toString(),
+          startTime: vest.startTime.toString(),
+          endTime: vest.endTime.toString(),
+          apr: vest.apr.toString(),
+          active: slotsAvailability[index],
+        }));
+        console.log(`Fetched active vesting slots.`);
+      } catch (error) {
+        console.error("Failed to fetch vesting slots:", error);
+        this.vests = [];
+      }
+     },
+     async fetchVestingSlots() {
+      if (!this.accountAddress || !this.selectedToken) return; 
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const network = await provider.getNetwork();
+      console.log(`Current network: ${network.name}`);
+      const vestingContractAddress = this.contractAddresses[network.name].vesting[this.selectedToken];
+      console.log(`Using vesting contract address: ${vestingContractAddress}`);
+      const vestingContract = new ethers.Contract(vestingContractAddress, VestingABI, provider);
+
+      try {
+        const vests = await vestingContract.getAllVests(this.accountAddress);
+        this.vests = vests.map(vest => ({
+          amount: vest.amount.toString(),
+          startTime: vest.startTime.toString(),
+          endTime: vest.endTime.toString(),
+          apr: vest.apr.toString(),
+        }));
+        for (const [index, vest] of this.vests.entries()) {
+          await this.calculateLockedTimeUsingContract(vest.startTime, vest.endTime, index);
+        }
+          console.log(`Fetched ${vests.length} vesting slots.`);
+        } catch (error) {
+          console.error("Failed to fetch vesting slots:", error);
+          this.vests = [];
+        }
+     },
+     async calculateLockedTimeUsingContract(startTime, endTime, index) {
+      if (!this.accountAddress || !this.selectedToken) return; 
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const network = await provider.getNetwork();
+      console.log(`Current network: ${network.name}`);
+      const vestingContractAddress = this.contractAddresses[network.name].vesting[this.selectedToken];
+      const contract = new ethers.Contract(vestingContractAddress, VestingABI, provider);
+      const duration = endTime - startTime;
+      try {
+        const months = await contract.findTimeBracketIndex(duration);
+        const adjustedMonths = Math.max(Number(months) + 1, 1);
+        const monthWord = adjustedMonths === 1 ? 'mo.' : 'mos.';
+        this.lockedTimes[index] = `${adjustedMonths} ${monthWord}`;
+        console.log(this.lockedTimes[index]);
+      } catch (error) {
+        console.error("Error calculating locked time:", error);
+        this.lockedTimes[index] = 'Error';
+      }
+     },
      async fetchPrimordialEmission() {
       try {
         if (!this.accountAddress) return;
@@ -428,6 +563,9 @@
      }
    },
    computed: {
+     ethers() {
+      return ethers;
+     },
      selectedVestingContractAddress() {
        console.log("Vesting Contract Address: ", this.contractAddresses[this.currentNetwork].vesting[this.selectedToken]);
        return this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
@@ -503,13 +641,14 @@
      },
    },
    mounted() {
-    this.detectNetwork();
+      this.detectNetwork();
       if (window.ethereum) {
         window.ethereum.on('accountsChanged', (accounts) => {
           this.$emit('update:accountAddress', accounts[0]);
           this.fetchLPTokenBalances();
           this.fetchTokenBalances();
           this.fetchPrimordialEmission();
+          this.fetchVestingSlots();
         });
         window.ethereum.on('chainChanged', (_chainId) => {
         window.location.reload(_chainId);
@@ -517,6 +656,7 @@
         this.subscribeToNewBlocks();
         this.fetchLPTokenBalances();
         this.fetchTokenBalances();
+        this.fetchVestingSlots();
       }
    },
    watch: {
@@ -524,6 +664,7 @@
       if (newVal !== oldVal) {
         this.fetchStakingInfo();
         this.fetchPrimordialEmission();
+        this.fetchVestingSlots();
       } 
      },
      accountAddress(newVal, oldVal) {
@@ -606,6 +747,4 @@
    border: none;
  }
  </style>
- 
- 
- 
+
