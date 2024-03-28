@@ -48,25 +48,27 @@
       </div>
     </div>
 
-    <div v-if="selectedOption === 'Vesting'" class="flex flex-col items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto">
+    <div v-if="selectedOption === 'Vesting'" class="flex flex-col items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto mb-4">
       <div v-if="vests && vests.length" class="w-full max-w-sm mx-auto md:max-w-md lg:max-w-lg">
         <p class="font-origin text-yellow-300">Vesting Slots</p>          
-        <div :class="{ 'flex justify-center': vests.length === 1, 'grid grid-cols-1 md:grid-cols-2 gap-4': vests.length > 1 }">
+        <!-- <div :class="{ 'flex justify-center': vests.length === 1, 'grid grid-cols-1 md:grid-cols-2 gap-4': vests.length > 1 }"> -->
+          <div :class="{ 'grid grid-cols-1 md:grid-cols-2 gap-4': vests.length > 1 }">
           <div v-for="(vest, index) in vests" :key="index" 
-            class="mb-4 last:mb-0 w-full max-w-md mx-auto cursor-pointer relative" 
+            class="mb-4 w-full max-w-md mx-auto cursor-pointer relative" 
             @click="selectVestSlot(index)"
             :class="{
               'flex justify-between items-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-900 focus:border-green-500 transition-colors duration-300': true,
               'border-2 border-custom-blue': selectedVestIndex !== index,
               'border-2 border-green-500': selectedVestIndex === index,
+              'last:mr-0': index % 2 === 0,
             }">
           <div>
             <div class="text-left">
-              <p class="font-origin text-yellow-300">Amount: {{ abbreviateNumber(ethers.formatEther(vest.amount)) || 'Calculating...' }}</p>
-              <p class="font-origin text-yellow-300">Locked: {{ lockedTimes[index] || 'Calculating...' }}</p>
-              <p class="font-origin text-yellow-300">Remaining: {{ calculateTimeLeft(vest.endTime) || 'Calculating...' }}</p>
-              <p class="font-origin text-yellow-300">APR: {{ (vest.apr)+'%' || 'Calculating...' }}</p>
-              <p class="font-origin text-yellow-300">Est. Rewards: {{ abbreviateNumber(calculateEstimatedRewards(vest)) || 'Calculating...' }}</p>
+              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Amount: {{ abbreviateNumber(ethers.formatEther(vest.amount)) || 'Calculating...' }}</p>
+              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Locked: {{ lockedTimes[index] || 'Calculating...' }}</p>
+              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Remaining: {{ calculateTimeLeft(vest.endTime) || 'Calculating...' }}</p>
+              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">APR: {{ (vest.apr)+'%' || 'Calculating...' }}</p>
+              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Est. Rewards: {{ abbreviateNumber(calculateEstimatedRewards(vest)) || 'Calculating...' }}</p>
             </div>
             <div v-if="selectedVestIndex === index" class="absolute top-0 right-0 p-1">
               <img src="@/assets/check.png" alt="Selected" class="w-4 h-4">
@@ -82,21 +84,28 @@
 
      <div class="mb-6">
      <ConnectWalletButton v-if="!accountAddress" @connect="$emit('handleConnect')" class="w-full mb-6"/>
-     <button v-else-if="selectedToken === 'PPePe'" disabled class="bg-gradient-to-r font-origin from-gray-600 to-gray-900 text-yellow-300 px-4 py-2 rounded-xl cursor-not-allowed text-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-700 w-full">
-       SDIV REWARDS COMING SOON
-     </button>
-     <div v-else class="flex justify-between w-full">
-       <button @click="handleUnstakeClick" :disabled="loadingUnstake" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700">
+     <div v-if="accountAddress && selectedOption === 'Staking'" class="flex justify-between w-full">
+       <button @click="handleUnstakeClick" :disabled="loadingUnstake" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mr-5 text-xs md:text-sm lg:text-lg">
         <SpinnerSVG v-if="loadingUnstake" />
         <span v-else>Unstake LP</span>
       </button>
-      <button @click="handleClaimClick" :disabled="loadingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700">
+      <button @click="handleClaimClick" :disabled="loadingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 text-xs md:text-sm lg:text-lg">
             <SpinnerSVG v-if="loadingClaim" />
             <span v-else>Claim</span>
         </button>
         </div>
+      <div v-if="accountAddress && selectedOption === 'Vesting'" class="flex justify-between w-full">
+        <button @click="handleEmergencyWithdrawClick" :disabled="loadingEmergencyWithdraw" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mr-5 text-xs md:text-sm lg:text-lg">
+          <SpinnerSVG v-if="loadingEmergencyWithdraw" />
+          <span v-else>Emergency Withdraw</span>
+        </button>
+        <button @click="handleVestingClaimClick" :disabled="loadingVestingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 text-xs md:text-sm lg:text-lg">
+          <SpinnerSVG v-if="loadingVestingClaim" />
+          <span v-else>Claim</span>
+        </button>
       </div>
     </div>
+  </div>
  </template>
  
  <script>
@@ -205,6 +214,8 @@
        selectedToken: 'PPePe',
        loadingClaim: false,
        loadingUnstake: false,
+       loadingEmergencyWithdraw: false,
+       loadingVestingClaim: false,
        loading: false,
        claimButtonText: 'Claim',
        currencies: ['PPePe', 'PePe', 'Shib'],
@@ -326,6 +337,7 @@
         const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
         const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
         const emission = await contract.getPrimordialEmission(this.accountAddress);
+        console.log("Primordial Emission:", emission);
         this.primordialEmission = emission;
       } catch (error) {
         console.error("Error fetching Primordial Emission:", error);
@@ -470,7 +482,7 @@
         await tx.wait();
 
         this.loadingUnstake = false;
-        // Refresh the balance
+        // Refresh the balance?
       } catch (error) {
         this.loadingUnstake = false;
         console.error("Error during unstake:", error);
@@ -499,10 +511,46 @@
         await tx.wait();
 
         this.loadingClaim = false;
-        // Refresh balances
+        // Refresh balance?
       } catch (error) {
         this.loadingClaim = false;
         console.error("Error during claim:", error);
+      }
+     },
+     async handleEmergencyWithdrawClick() {
+      try {
+        this.loadingEmergencyWithdraw = true;
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
+        const contract = new ethers.Contract(contractAddress, VestingABI, signer);
+
+        const tx = await contract.emergencyWithdraw(this.selectedVestIndex);
+        await tx.wait();
+
+        this.loadingEmergencyWithdraw = false;
+        // Refresh the balance?
+      } catch (error) {
+        this.loadingEmergencyWithdraw = false;
+        console.error("Error during emergency withdraw:", error);
+      }
+     },
+     async handleVestingClaimClick() {
+      try {
+        this.loadingVestingClaim = true;
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
+        const contract = new ethers.Contract(contractAddress, VestingABI, signer);
+
+        const tx = await contract.claimRewards(this.selectedVestIndex);
+        await tx.wait();
+
+        this.loadingVestingClaim = false;
+        // Refresh balance?
+      } catch (error) {
+        this.loadingVestingClaim = false;
+        console.error("Error during vesting claim:", error);
       }
      },
      async handleStakeClick() {
@@ -524,7 +572,11 @@
           contractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
           contractABI = VestingABI;
           contractMethod = 'vestTokens';
-          timeIndex = this.vestingPeriod / 30 - 1;
+          if (this.vestingPeriod === 365) {
+            timeIndex = 11; // Directly set to 11 for 12 months, as indices are 0-based
+          } else {
+            timeIndex = Math.round(this.vestingPeriod / 30) - 1;
+          }
           tokenContractAddress = this.contractAddresses[this.currentNetwork].tokens[this.selectedToken.toLowerCase()];
         } else {
           console.error('Invalid option selected');
@@ -648,6 +700,7 @@
           this.fetchTokenBalances();
           this.fetchPrimordialEmission();
           this.fetchVestingSlots();
+          //this.fetchAllSlots();
         });
         window.ethereum.on('chainChanged', (_chainId) => {
         window.location.reload(_chainId);
@@ -656,6 +709,7 @@
         this.fetchLPTokenBalances();
         this.fetchTokenBalances();
         this.fetchVestingSlots();
+        //this.fetchAllSlots();
       }
    },
    watch: {
@@ -672,6 +726,7 @@
         this.fetchStakingInfo();
         this.fetchPrimordialEmission();
         this.fetchVestingSlots();
+        //this.fetchAllSlots();
       } 
      },
      rawPpepeBalance(newVal) {
@@ -746,4 +801,3 @@
    border: none;
  }
  </style>
-
