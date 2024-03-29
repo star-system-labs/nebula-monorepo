@@ -115,8 +115,8 @@ export default {
     }
   },
   mounted() {
-    console.log(this.lpTokenBalances);
-    console.log(this.tokenBalances);
+    //console.log(this.lpTokenBalances);
+    //console.log(this.tokenBalances);
   }
 }
 </script>
