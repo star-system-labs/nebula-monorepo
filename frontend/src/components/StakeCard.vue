@@ -51,17 +51,18 @@
        :accountAddress="accountAddress"
      />
  
-     <div v-if="selectedOption === 'Vesting'" class="my-4 flex flex-col items-center">
-       <input type="range" min="30" max="360" step="30" v-model="vestingPeriod" class="range range-primary w-full max-w-xs" @input="adjustVestingPeriod">
-       <div class="text-teal font-origin mt-2">Vesting Period: {{ formattedVestingPeriod }}</div>
-     </div>
- 
      <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mb-6"/>
-     <button v-else @click="handleStakeClick" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6">
-       <SpinnerSVG v-if="loading" />
-       <span v-else>{{ stakeButtonText }}</span>
-     </button>
-   </div>
+      <div v-else>
+        <div v-if="selectedOption === 'Vesting'" class="my-4 flex flex-col items-center">
+          <input type="range" min="30" max="360" step="30" v-model="vestingPeriod" class="range range-primary w-full max-w-xs" @input="adjustVestingPeriod">
+          <div class="text-teal font-origin mt-2">Vesting Period: {{ formattedVestingPeriod }}</div>
+        </div>
+        <button @click="handleStakeClick" :disabled="loading" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6">
+          <SpinnerSVG v-if="loading" />
+          <span v-else>{{ stakeButtonText }}</span>
+        </button>
+      </div>
+    </div>
  </template>
  
  <script>
