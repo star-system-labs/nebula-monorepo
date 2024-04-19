@@ -53,12 +53,27 @@
  
      <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mb-6"/>
       <div v-else>
-        <div v-if="selectedOption === 'Vesting'" class="my-4 flex flex-col items-center">
+        <div v-if="selectedOption === 'Staking'">
+          <div class="mb-2 font-origin font-bold text-red-500" v-if="showWarning">PLEASE SELECT A SLOT</div>
+          <div class="currency-toggle cursor-pointer flex mb-4 rounded-xl overflow-hidden border-2"
+               :class="{'border-red-500': showWarning, 'border-custom-blue': !showWarning}">
+            <div v-for="slot in [1, 2, 3]" :key="`slot-${slot}`"
+                 :class="selectedSlot === slot-1 ? 'bg-button-active text-yellow-300' : 'bg-transparent text-custom-blue-inactive'"
+                 class="flex-1 flex items-center justify-center text-center py-1 px-4 sm:px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs md:text-sm lg:text-lg cursor-pointer"
+                 @click="selectSlot(slot-1)">
+                 <span class="block w-full text-center">Slot&nbsp;{{ slot }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-else>
           <input type="range" min="30" max="360" step="30" v-model="vestingPeriod" class="range range-primary w-full max-w-xs" @input="adjustVestingPeriod">
           <div class="text-teal font-origin mt-2">Vesting Period: {{ formattedVestingPeriod }}</div>
         </div>
-        <button @click="handleStakeClick" :disabled="loading" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6">
-          <SpinnerSVG v-if="loading" />
+        <button 
+          @click="handleStakeClick" 
+          :disabled="loading" 
+          class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6">
+          <orbit-spinner v-if="loading" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
           <span v-else>{{ stakeButtonText }}</span>
         </button>
       </div>
@@ -68,7 +83,7 @@
  <script>
  import ConnectWalletButton from './ConnectWalletButton.vue';
  import TokenInputCard from './TokenInputCard.vue';
- import SpinnerSVG from './SpinnerSVG.vue';
+ import { OrbitSpinner } from 'epic-spinners';
  import LPStakingABI from '../ABI/LPStakingABI.json';
  import TokenABI from '../ABI/IERC20.json';
  import VestingABI from '../ABI/VestingABI.json';
@@ -80,7 +95,7 @@
    components: {
      TokenInputCard,
      ConnectWalletButton,
-     SpinnerSVG
+     OrbitSpinner
    },
    props: {
      rawPpepeBalance: String,
@@ -96,6 +111,8 @@
    },
    data() {
      return {
+       loadingStake: false,
+       loadingVest: false,
        currentNetwork: 'mainnet',
        tokenBalances: {
          ppepe: '0',
@@ -141,14 +158,14 @@
         },
         sepolia: {
           staking: {
-           PPePe: '0x39904563A3F0414aDfF5F608BE6ecA6Ea6Da023A',
-           PePe: '0x39904563A3F0414aDfF5F608BE6ecA6Ea6Da023A',
-           Shib: '0xAc2C320697B338a168556bd6b909584416AaaEc4',
+           PPePe: '0x00',
+           PePe: '0x6F295069d4F66D53DCC5a5dD2354199Cf55F2B66',
+           Shib: '0x533Bf6eA7868abC6C78D73E60EB795Cb5FCa14C1',
           },
           vesting: {
-           PPePe: '0xC8A0173CC9Ef2481760d44Fbfc76Fb93F47D329F',
-           PePe: '0x28Cf2e97673Ebf87981ed872c2b844A7B2a03FDb',
-           Shib: '0xCdEE06A091EB25A8B178d57e21f1E36c90F5F9B4',
+           PPePe: '0x9D1CE06759B6eC0e89Bf61F32cF7E0c00d0655DA',
+           PePe: '0x44B09a5aDBAC9E58d023Ccce06F397483093ab67',
+           Shib: '0xA5bbb0628FbB9cb520D26Ebe63dA59402A58d78b',
           },
           tokens: {
            ppepe: '0xB6Ad6AD0364Eb5E8B109a55F01F4F68971B40E2B',
@@ -175,9 +192,24 @@
        enteredAmountData: '0.00',
        walletBalanceData: '0.00',
        selectedOption: 'Staking',
+       selectedSlot: null,
+       showWarning: false,
      };
    },
    methods: {
+     selectSlot(slot) {
+      this.selectedSlot = slot;
+      this.showWarning = false;
+     },
+     async fetchAndUpdateBalances() {
+      const newBalances = {
+        ppepe: await this.fetchTokenBalance('ppepe'),
+        pepe: await this.fetchTokenBalance('pepe'),
+        shib: await this.fetchTokenBalance('shib'),
+      };
+
+      this.$emit('updateBalances', newBalances);
+     },
      subscribeToNewBlocks() {
       const provider = new ethers.BrowserProvider(window.ethereum);
       provider.on('block', () => {
@@ -201,22 +233,28 @@
      },
      async fetchTokenBalances() {
        if (!this.accountAddress) {
-         console.log("No account address provided.");
+         console.error("No account address provided.");
          return;
        }
-       try {
+       
        const provider = new ethers.BrowserProvider(window.ethereum);
-       for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].tokens)) {
-         const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
-         const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
-         const balanceInEther = ethers.formatEther(balanceInWei);
-         const balance = await tokenContract.balanceOf(this.accountAddress);
-         console.log("Token Balance:", balance.toString());
-         this.tokenBalances[tokenName] = balanceInEther;
-         console.log(`${tokenName} (${tokenAddress}) balance:`, this.tokenBalances[tokenName]);
-      }
-     } catch (error) {
-        console.error("Error fetching token balances:", error);
+       console.log(`Current network: ${this.currentNetwork}`);
+       try {
+         for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].tokens)) {
+           console.log(`Fetching balance for ${tokenName} at address ${tokenAddress}`);
+           const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
+           const balanceInWei = await tokenContract.balanceOf(this.accountAddress).catch(err => {
+             console.error(`Error fetching balance for ${tokenName} at address ${tokenAddress}:`, err.message);
+             return null;
+           });
+           if (balanceInWei === null) continue;
+           const balanceInEther = ethers.formatEther(balanceInWei);
+           this.tokenBalances[tokenName] = balanceInEther;
+           console.log(`${tokenName} balance: ${balanceInEther}`);
+           console.log("TOKENBALANCE", this.tokenBalances);
+         }
+       } catch (error) {
+         console.error("Error fetching token balances:", error);
        }
      },
      async fetchLPTokenBalances() {
@@ -274,9 +312,16 @@
      },
      async handleStakeClick() {
       try {
+        this.loading = true;
         if (!this.currentNetwork) {
           console.error('Network not detected or unsupported');
           return;
+        }
+        if (this.selectedOption === 'Staking' && this.selectedSlot === null) {
+          this.showWarning = true;
+          return;
+        } else {
+          this.showWarning = false;
         }
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
@@ -292,7 +337,7 @@
           contractABI = VestingABI;
           contractMethod = 'vestTokens';
           if (this.vestingPeriod === 365) {
-            timeIndex = 11; // Directly set to 11 for 12 months, as indices are 0-based
+            timeIndex = 11;
           } else {
             timeIndex = Math.round(this.vestingPeriod / 30) - 1;
           }
@@ -318,14 +363,17 @@
         const actionContract = new ethers.Contract(contractAddress, contractABI, signer);
         let actionTx;
         if (this.selectedOption === 'Staking') {
-          actionTx = await actionContract[contractMethod](amountInWei);
+        const slot = Number(this.selectedSlot);
+          actionTx = await actionContract[contractMethod](amountInWei, slot);
         } else if (this.selectedOption === 'Vesting') {
           actionTx = await actionContract[contractMethod](amountInWei, timeIndex);
         }
         await actionTx.wait();
         console.log(`${this.selectedOption} action completed successfully`);
+        this.loading = false;
       } catch (error) {
         console.error("Error during action:", error);
+        this.loading = false;
       }
      },
      updateWalletBalance() {
@@ -450,6 +498,12 @@
      walletBalanceData(newVal) {
        console.log("walletBalanceData updated: ", newVal)
      },
+     tokenBalances: {
+      deep: true,
+      handler(newBalances) {
+        this.$emit('updateBalances', { ppepe: newBalances.ppepe, pepe: newBalances.pepe, shib: newBalances.shib });
+      }
+     }
     },
     created() {
     console.log("ClaimCard raw balances:", this.rawPpepeBalance, this.rawPepeBalance, this.rawShibBalance);
@@ -490,5 +544,3 @@
    border: none;
  }
  </style>
- 
- 

@@ -22,6 +22,7 @@
       :balance="ethBalance"
       :isEditable="true"
       @amountChanged="handleAmountChanged"
+      @inputChanged="calculateQuote"
       :accountAddress="accountAddress"
     />
 
@@ -56,7 +57,7 @@
       :currencyLogo="getTokenLogo(selectedToken)"
       :balance="abbreviatedPpepeBalance"
       :isEditable="false"
-      @amountChange="handleAmountChanged"
+      :displayValue="estimatedReward.toString()"
       :accountAddress="accountAddress"
       :quote="localQuote"
       :isMaxSelectable="false"
@@ -77,9 +78,16 @@
 import ConnectWalletButton from './ConnectWalletButton.vue';
 import TokenInputCard from './TokenInputCard.vue';
 import MineButton from './MineButton.vue';
+import { ethers } from 'ethers';
+
+import { Token, WETH, Fetcher, Route, Trade, TokenAmount, TradeType } from '@uniswap/sdk';
 
 import supplyPepe from '@/assets/supply-pepe.png';
 import supplyPond from '@/assets/supply-pond.png';
+
+const chainId = '1';
+const PEPE_ADDRESS = '0x6982508145454ce325ddbe47a25d4ec3d2311933';
+const PEPE = new Token(chainId, PEPE_ADDRESS, 18);
 
 export default {
   components: {
@@ -107,6 +115,9 @@ export default {
   },
   data() {
     return {
+      ethAmount: 0,
+      estimatedReward: 0,
+      liquidityEstimate: 0,
       selectedToken: "PePe",
       showCopeSequence: false,
       enteredAmountData: '0.00',
@@ -117,9 +128,57 @@ export default {
       supplyPepe,
       supplyPond,
       localQuote: null,
+      quote: null,
+      localPpepeBalance: this.ppepeBalance
     };
   },
   methods: {
+    async fetchPairData() {
+      const pair = await Fetcher.fetchPairData(PEPE, WETH[chainId]);
+      return pair;
+    },
+    async estimateAddLiquidity(swappedAmtOut, ethAmount) {
+      const pair = await this.fetchPairData();
+      //const route = new Route([pair], WETH[chainId]);
+      const tokenAmount = new TokenAmount(PEPE, swappedAmtOut.toString());
+      const wethAmount = new TokenAmount(WETH[chainId], ethAmount.toString());
+
+      // Assuming you want to add liquidity in a 50/50 ratio
+      const totalSupply = pair.liquidityToken.totalSupply.raw;
+      const pepeReserve = pair.reserveOf(PEPE).raw;
+      const wethReserve = pair.reserveOf(WETH[chainId]).raw;
+
+      const pepeShare = tokenAmount.raw.divide(pepeReserve);
+      const wethShare = wethAmount.raw.divide(wethReserve);
+      const liquidityMinted = totalSupply.multiply(pepeShare.lessThan(wethShare) ? pepeShare : wethShare);
+
+        return liquidityMinted.toSignificant(6);
+    },
+    async estimatePEPEFromETH(ethAmount) {
+      // Here we try to setup the data grab from the uniswap/sdk
+      const wethAmount = WETH[chainId].amount(ethAmount.toString());
+      console.log("wethAmount: ", wethAmount);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const pair = await Fetcher.fetchPairData(PEPE, WETH[chainId], provider);
+      console.log("pair: ", pair);
+      const route = new Route([pair], WETH[chainId]);
+      console.log("route: ", route);
+      const trade = new Trade(route, new TokenAmount(WETH[chainId], wethAmount.raw.toString()), TradeType.EXACT_INPUT);
+      console.log("trade: ", trade);
+      return trade.outputAmount.toSignificant(6);
+    },
+    async calculateQuote(ethAmount) {
+      const swappedAmtOut = await this.estimatePEPEFromETH(ethAmount);
+      const _totalLiquidity = await this.estimateAddLiquidity(swappedAmtOut, ethAmount);
+      console.log("swappedAmtOut: ", swappedAmtOut);
+      // quote = (_totalLiquidity * 4) + (swappedAmtOut * 8);
+      // The above is the logic from the miner to calculate the quote,
+      // we use this below after grabbing the above items through the uniswap/sdk
+      // then pass this back into AmountInput.vue through TokenInputCard.vue
+      // to attempt to allow the user to view the estimated rewards for mining
+      const quote = (_totalLiquidity * 4) + (swappedAmtOut * 8);
+      this.estimatedReward = quote;
+    },
     abbreviateNumber(value) {
       let newValue = parseFloat(value);
       if (newValue >= 1e12) {
@@ -136,6 +195,7 @@ export default {
     },
     handleQuoteObtained(quote) {
       this.localQuote = quote;
+      this.quote = quote;
     },
     handleMining() {
         this.$emit('mine');
@@ -164,9 +224,18 @@ export default {
     this.walletBalanceData = this.ethBalance;
   },
   watch: {
+    ethAmount(newVal, oldVal) {
+      if (newVal !== oldVal) {
+        this.calculateQuote(newVal);
+        console.log("calculateQuote called: ", this.calculateQuote);
+      }
+    },
     enteredAmountData(newVal) {
       console.log("enteredAmountData updated: ", newVal);
     },
+    ppepeBalance(newVal) {
+      this.localPpepeBalance = newVal;
+   }
   },
   computed: {
     supplyImageSrc() {

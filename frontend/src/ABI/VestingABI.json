@@ -90,9 +90,9 @@
     "name": "getAllSlots",
     "outputs": [
       {
-        "internalType": "bool[10]",
+        "internalType": "bool[12]",
         "name": "",
-        "type": "bool[10]"
+        "type": "bool[12]"
       },
       {
         "components": [
@@ -115,11 +115,6 @@
             "internalType": "uint256",
             "name": "apr",
             "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "active",
-            "type": "bool"
           }
         ],
         "internalType": "struct Vesting.Vest[]",
@@ -161,11 +156,6 @@
             "internalType": "uint256",
             "name": "apr",
             "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "active",
-            "type": "bool"
           }
         ],
         "internalType": "struct Vesting.Vest[]",
@@ -212,11 +202,6 @@
             "internalType": "uint256",
             "name": "apr",
             "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "active",
-            "type": "bool"
           }
         ],
         "internalType": "struct Vesting.Vest",
@@ -248,10 +233,10 @@
   },
   {
     "inputs": [],
-    "name": "mintablePrimordialPePeToken",
+    "name": "owner",
     "outputs": [
       {
-        "internalType": "contract IPrimordialPePe",
+        "internalType": "address",
         "name": "",
         "type": "address"
       }
@@ -261,10 +246,10 @@
   },
   {
     "inputs": [],
-    "name": "owner",
+    "name": "primordialPePeToken",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "contract IPrimordialPePe",
         "name": "",
         "type": "address"
       }
@@ -371,11 +356,6 @@
         "internalType": "uint256",
         "name": "apr",
         "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "active",
-        "type": "bool"
       }
     ],
     "stateMutability": "view",

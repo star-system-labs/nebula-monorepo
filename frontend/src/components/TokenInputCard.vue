@@ -2,7 +2,14 @@
   <div class="flex flex-col items-start border-custom-blue bg-card-blue bg-opacity-100 p-4 rounded-xl w-full">
     <div class="text-sm mb-2">{{ label }}</div>
     <div class="flex items-center justify-between w-full">
-      <AmountInput :currency="currency" :maxAmount="balance" :isEditable="isEditable" @inputChanged="emitAmount" ref="amountInput" />
+      <AmountInput 
+        :currency="currency" 
+        :maxAmount="balance" 
+        :isEditable="isEditable" 
+        :displayValue="estimatedReward"
+        @inputChanged="emitAmount" 
+        ref="amountInput" 
+        />
       <div class="flex flex-col items-center justify-center">
         <img :src="currencyLogo" alt="Currency Logo" class="w-12 rounded-full">
       </div>
@@ -35,6 +42,11 @@ export default {
     AmountInput,
   },
   props: {
+    // added the prop here
+    estimatedReward: {
+      type: String,
+      default: '0.00'
+    },
     isLPStaking: {
       type: Boolean,
       default: false
