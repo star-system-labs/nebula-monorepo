@@ -14,9 +14,11 @@ module.exports = {
       },
       borderWidth: {
         'custom-blue': '2px',
+        'red-500': '2px',
       },
       borderColor: {
         'custom-blue': '#0751bf',
+        'red-500': '#ff0000',
       },
       backgroundColor: {
         'button-inactive': 'rgba(19, 24, 32, 0.45)',
@@ -30,6 +32,7 @@ module.exports = {
         'custom-blue': '#0751bf',
         'custom-blue-inactive': '#0751bf',
         'teal': '#5d9fa5',
+        'red-500': '#ff0000',
       },
       textShadow: {
         'custom-blue': '0 0 2px #0751bf',

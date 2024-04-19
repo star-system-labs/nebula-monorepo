@@ -1,4 +1,4 @@
-# nebula-frontend
+# Nebula
 
 ## Project setup
 ```

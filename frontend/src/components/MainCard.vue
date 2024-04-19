@@ -42,11 +42,11 @@
         :ppepeBalance="ppepeBalance" 
         :abbreviatedPpepeBalance="abbreviatedPpepeBalance"
         :accountAddress="accountAddress" 
-        @amountChanged="someMethodInMainCard" 
+        @amountChanged="handleAmountChanged" 
         @connect="$emit('connect')" 
       />
       <div class="mt-4 text-yellow-300 font-origin font-semibold text-xl sm:text-xs">
-        Mine More, Earn More
+        {{ displayMessage }}
       </div>
       </div>
       <div v-if="selectedCard === 'claim'" class="w-full">
@@ -65,6 +65,9 @@
             :contract-addresses="currentContractAddresses"
             @connect="$emit('handleConnect')"
             />
+            <div class="mt-4 text-yellow-300 font-origin font-semibold text-xl sm:text-xs">
+        {{ displayMessage }}
+      </div>
       </div>
       <div v-if="selectedCard === 'stake'" class="w-full">
         <StakeCard
@@ -82,7 +85,11 @@
             :rawShibBalance="rawShibBalance"
             :contract-addresses="currentContractAddresses"
             @connect="$emit('connect')"
+            @updateBalances="handleUpdateBalances"
             />
+            <div class="mt-4 text-yellow-300 font-origin font-semibold text-xl sm:text-xs">
+        {{ displayMessage }}
+      </div>
     </div>
   </div>
 </template>
@@ -149,6 +156,9 @@
       },
     },
     methods: {
+      handleUpdateBalances(newBalances) {
+        this.$emit('updateBalances', newBalances);
+      },
       setSelectedCard(card) {
         this.selectedCard = card;
         localStorage.setItem('selectedCard', card);
@@ -157,12 +167,32 @@
         this.showCopeSequence = !this.showCopeSequence;
       }
     },
+    computed: {
+      displayMessage() {
+        console.log('Current selectedCard:', this.selectedCard);
+        switch (this.selectedCard) {
+          case 'mine':
+            return 'Mine More, Earn More';
+          case 'stake':
+            return 'Meme More, Earn More';
+          case 'claim':
+            return 'Claim More, Earn More';
+          default:
+            return 'Meme More, Earn More';
+        }
+      }
+    },
     mounted() {
       //console.log("Contract Addresses:", this.contractAddresses);
       const savedCard = localStorage.getItem('selectedCard');
       if (savedCard && savedCard !== this.selectedCard) {
         this.setSelectedCard(savedCard);
       }
-    }
+    },
+    watch: {
+      selectedCard(newVal) {
+        console.log('Selected card changed to:', newVal);
+      }
+    },
   }
   </script>

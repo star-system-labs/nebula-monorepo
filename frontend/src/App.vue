@@ -20,6 +20,7 @@
         :rawShibBalance="rawShibBalance"
         :current-contract-addresses="currentContractAddresses"
         @connect="connectWallet" 
+        @updateBalances="handleUpdateBalances"
       />
       <div>
         <p class="text-yellow-300 font-nixie sm:text-xs md:text-sm cursor-pointer" 
@@ -69,6 +70,7 @@
 import { formatEther, Contract, BrowserProvider } from "ethers";
 import NotificationCard from '@/components/NotificationCard.vue';
 import MainCard from '@/components/MainCard.vue';
+import { ethers } from 'ethers';
 
 
 const ERC20_ABI = [
@@ -132,6 +134,30 @@ export default {
     };
   },
   methods: {
+    async fetchPpepeBalance() {
+      if (window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        provider.on('block', () => {
+          this.updateBalance();
+        });
+      }
+      const newBalance = await this.updateBalance();
+      this.ppepeBalance = newBalance;
+    },
+    subscribeToNewBlocks() {
+      if (window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        provider.on('block', async () => {
+          await this.fetchPpepeBalance();
+          await this.updateBalance();
+        });
+      }
+    },
+    handleUpdateBalances(newBalances) {
+      this.ppepeBalance = newBalances.ppepe || this.ppepeBalance;
+      this.pepeBalance = newBalances.pepe || this.pepeBalance;
+      this.shibBalance = newBalances.shib || this.shibBalance;
+    },
     async addToMetamask() {
     try {
         if (typeof window.ethereum !== 'undefined') {
@@ -311,7 +337,6 @@ export default {
         }
       });
     },
-
     async updateBalance() {
       const provider = new BrowserProvider(window.ethereum);
 
@@ -390,6 +415,8 @@ export default {
         console.log("Raw Balance:", this.rawPpepeBalance.toString());
         console.log("Ppepe Balance:", this.ppepeBalance.toString());
         this.ppepeBalance = this.formatBalance(formatEther(ppepeTokenBalance));
+        this.abbreviatedPpepeBalance = this.abbreviateNumber(this.rawPpepeBalance);
+        console.log('Abbreviated Balance:', this.abbreviatedPpepeBalance);
       } catch (error) {
         console.error("Error fetching PPEPE balance:", error);
         this.ppepeBalance = "0";
@@ -398,9 +425,7 @@ export default {
         console.error("PPEPE   contract address is null");
         this.ppepeBalance = "0";
       }
-
     },
-
     setNetwork(chainId) {
       const networkIdStr = String(chainId);
       switch (networkIdStr) {
@@ -422,6 +447,7 @@ export default {
     }
   },
   mounted() {
+    this.subscribeToNewBlocks();
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', (accounts) => {
         if (accounts.length === 0) {

@@ -32,29 +32,44 @@
      </div>
     </div>
 
-    <div v-if="selectedOption === 'Staking'" class="staking-rewards-container">
-      <div class="flex flex-col items-center justify-between border-custom-blue bg-card-blue bg-opacity-100 p-4 rounded-xl w-full mb-4">
-        <div class="text-yellow-300 font-origin text-center mb-4">Primordial Emission: {{ primordialEmission }}</div>
-        <div class="flex items-center justify-between w-full">
-          <div>
-            <div class="text-teal font-origin mb-2 mr-2">LP Staked</div>
-            <div class="text-yellow-300 font-origin">{{ stakedAmount }}</div>
-          </div>
-          <div>
-            <div class="text-teal font-origin mb-2 ml-2">{{ selectedToken === 'PPePe' ? 'SDIV Rewards' : 'PPePe Rewards' }}</div>
-            <div class="text-yellow-300 font-origin">{{ rewardsOwed }}</div>
+    <div v-if="selectedOption === 'Staking'" class="staking-rewards-container flex flex-col items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto mb-4">
+      <div v-if="stakes.length > 0" class="w-full max-w-sm mx-auto md:max-w-md lg:max-w-lg">
+        <p class="font-origin text-yellow-300">LP Staking Slots</p>
+        <div :class="{ 'grid grid-cols-1 md:grid-cols-2 gap-4 justify-start': stakes.length > 1 }">
+          <div v-for="(stake, index) in stakes" :key="index"
+               class="mb-4 w-full md:w-1/2 max-w-md cursor-pointer relative"
+               @click="selectStakingSlot(index)"
+               :class="{
+                 'flex justify-between items-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-900 focus:border-green-500 transition-colors duration-300': true,
+                 'border-2 border-custom-blue': selectedStakeIndex !== index,
+                 'border-2 border-green-500': selectedStakeIndex === index,
+                 'last:mr-0': index % 2 === 0,
+               }">
+            <div>
+              <div class="text-left">
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Primordial&nbsp;Emission:&nbsp;{{ primordialEmission }}</p>
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Amount: {{ ethers.formatEther(stake.amount) }}</p>
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Start Time: {{ formattedDate }}</p>
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Rewards Owed: {{ stake.rewardsOwed }}</p>
+              </div>
+              <div v-if="selectedStakeIndex === index" class="absolute top-0 right-0 p-1">
+                <img src="@/assets/check.png" alt="Selected" class="w-4 h-4">
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+      <div v-else class="font-origin text-yellow-300">
+        No Active Staking Slots
       </div>
     </div>
 
     <div v-if="selectedOption === 'Vesting'" class="flex flex-col items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto mb-4">
       <div v-if="vests && vests.length" class="w-full max-w-sm mx-auto md:max-w-md lg:max-w-lg">
         <p class="font-origin text-yellow-300">Vesting Slots</p>          
-        <!-- <div :class="{ 'flex justify-center': vests.length === 1, 'grid grid-cols-1 md:grid-cols-2 gap-4': vests.length > 1 }"> -->
-          <div :class="{ 'grid grid-cols-1 md:grid-cols-2 gap-4': vests.length > 1 }">
+          <div :class="{ 'grid grid-cols-1 md:grid-cols-2 gap-4 justify-start': vests.length > 1 }">
           <div v-for="(vest, index) in vests" :key="index" 
-            class="mb-4 w-full max-w-md mx-auto cursor-pointer relative" 
+            class="mb-4 w-full md:w-1/2 max-w-md cursor-pointer relative" 
             @click="selectVestSlot(index)"
             :class="{
               'flex justify-between items-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-900 focus:border-green-500 transition-colors duration-300': true,
@@ -86,21 +101,21 @@
      <ConnectWalletButton v-if="!accountAddress" @connect="$emit('handleConnect')" class="w-full mb-6"/>
      <div v-if="accountAddress && selectedOption === 'Staking'" class="flex justify-between w-full">
        <button @click="handleUnstakeClick" :disabled="loadingUnstake" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mr-5 text-xs md:text-sm lg:text-lg">
-        <SpinnerSVG v-if="loadingUnstake" />
+        <orbit-spinner v-if="loadingUnstake" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
         <span v-else>Unstake LP</span>
       </button>
       <button @click="handleClaimClick" :disabled="loadingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 text-xs md:text-sm lg:text-lg">
-            <SpinnerSVG v-if="loadingClaim" />
+        <orbit-spinner v-if="loadingClaim" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
             <span v-else>Claim</span>
         </button>
         </div>
       <div v-if="accountAddress && selectedOption === 'Vesting'" class="flex justify-between w-full">
         <button @click="handleEmergencyWithdrawClick" :disabled="loadingEmergencyWithdraw" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mr-5 text-xs md:text-sm lg:text-lg">
-          <SpinnerSVG v-if="loadingEmergencyWithdraw" />
+          <orbit-spinner v-if="loadingEmergencyWithdraw" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
           <span v-else>Emergency Withdraw</span>
         </button>
         <button @click="handleVestingClaimClick" :disabled="loadingVestingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 text-xs md:text-sm lg:text-lg">
-          <SpinnerSVG v-if="loadingVestingClaim" />
+          <orbit-spinner v-if="loadingVestingClaim" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
           <span v-else>Claim</span>
         </button>
       </div>
@@ -110,18 +125,19 @@
  
  <script>
  import ConnectWalletButton from './ConnectWalletButton.vue';
- import SpinnerSVG from './SpinnerSVG.vue';
+ import { OrbitSpinner } from 'epic-spinners';
  import LPStakingABI from '../ABI/LPStakingABI.json';
  import TokenABI from '../ABI/IERC20.json';
  import VestingABI from '../ABI/VestingABI.json';
  import { ethers } from 'ethers';
  import { toHandlers } from 'vue';
+ import { formatDistanceToNow } from 'date-fns';
  
  export default {
    name: 'ClaimCard',
    components: {
      ConnectWalletButton,
-     SpinnerSVG
+     OrbitSpinner
    },
    props: {
     accountAddress: {
@@ -138,8 +154,10 @@
    data() {
      return {
        selectedVestIndex: null,
+       selectedStakeIndex: null,
        lockedTimes: {},
        vests: [],
+       stakes: [],
        primordialEmission:'0',
        stakedAmountWei: '0',
        stakedAmount: '0',
@@ -190,13 +208,13 @@
         sepolia: {
           staking: {
            PPePe: '0x00',
-           PePe: '0x39904563A3F0414aDfF5F608BE6ecA6Ea6Da023A',
-           Shib: '0xAc2C320697B338a168556bd6b909584416AaaEc4',
+           PePe: '0x6F295069d4F66D53DCC5a5dD2354199Cf55F2B66',
+           Shib: '0x533Bf6eA7868abC6C78D73E60EB795Cb5FCa14C1',
           },
           vesting: {
-           PPePe: '0xC8A0173CC9Ef2481760d44Fbfc76Fb93F47D329F',
-           PePe: '0x28Cf2e97673Ebf87981ed872c2b844A7B2a03FDb',
-           Shib: '0xCdEE06A091EB25A8B178d57e21f1E36c90F5F9B4',
+           PPePe: '0x9D1CE06759B6eC0e89Bf61F32cF7E0c00d0655DA',
+           PePe: '0x44B09a5aDBAC9E58d023Ccce06F397483093ab67',
+           Shib: '0xA5bbb0628FbB9cb520D26Ebe63dA59402A58d78b',
           },
           tokens: {
            ppepe: '0xB6Ad6AD0364Eb5E8B109a55F01F4F68971B40E2B',
@@ -227,6 +245,7 @@
        enteredAmountData: '0.00',
        walletBalanceData: '0.00',
        selectedOption: 'Staking',
+       selectedSlot: 0, 
      };
    },
    methods: {
@@ -236,9 +255,14 @@
      updateVests(newVests) {
       this.vests = [...newVests];
      },
+     selectStakingSlot(index) {
+      this.selectedStakeIndex = index;
+      console.log("Selected Stake!!!!!!",this.selectedStakeIndex)
+      //this.$forceUpdate();
+     },
      selectVestSlot(index) {
       this.selectedVestIndex = index;
-      console.log("Selected!!!!!!",this.selectedVestIndex)
+      console.log("Selected Vest!!!!!!",this.selectedVestIndex)
       //this.$forceUpdate();
      },
      calculateEstimatedRewards(vest) {
@@ -260,7 +284,7 @@
         return Math.ceil(timeDiff / (30 * 24 * 60 * 60 * 1000)) + ' mos.';
       }
      },
-     async fetchAllSlots() {
+     async fetchAllVests() {
       if (!this.accountAddress || !this.selectedToken) return;
       const provider = new ethers.BrowserProvider(window.ethereum);
       const vestingContractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
@@ -280,6 +304,39 @@
       } catch (error) {
         console.error("Failed to fetch vesting slots:", error);
         this.vests = [];
+      }
+     },
+     async fetchStakingSlots() {
+      if (!this.accountAddress || !this.selectedToken) return; 
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const network = await provider.getNetwork();
+      console.log(`Current network: ${network.name}`);
+      const stakingContractAddress = this.contractAddresses[network.name].staking[this.selectedToken];
+      console.log(`Using staking contract address: ${stakingContractAddress}`);
+      const stakingContract = new ethers.Contract(stakingContractAddress, LPStakingABI, provider);
+
+      try {
+        const [slotsAvailability, stakes] = await stakingContract.getAllSlots(this.accountAddress);
+        const stakesWithRewards = await Promise.all(stakes.map(async (stake, index) => {
+          if (slotsAvailability[index] === false) { // Assuming false indicates an occupied slot
+            const rewardsOwedWei = await stakingContract.getBasePrimordialOwed(stake.amount, this.accountAddress, index);
+            const rewardsOwed = parseFloat(ethers.formatEther(rewardsOwedWei)).toFixed(4);
+            return {
+              amount: stake.amount.toString(),
+              startTime: stake.startTime.toString(),
+              lastClaimTime: stake.lastClaimTime.toString(),
+              rewardsOwed
+            };
+          }
+          return null;
+        }));
+
+        this.stakes = stakesWithRewards.filter(stake => stake !== null);
+        console.log(`Fetched ${this.stakes.length} staking slots with rewards.`);
+      } catch (error) {
+        console.error("Failed to fetch staking slots:", error);
+        this.stakes = [];
       }
      },
      async fetchVestingSlots() {
@@ -331,12 +388,15 @@
      },
      async fetchPrimordialEmission() {
       try {
-        if (!this.accountAddress) return;
+        if (!this.accountAddress || this.selectedSlot === null) {
+          console.error('Account address or slot not specified');
+          return;
+        }
 
         const provider = new ethers.BrowserProvider(window.ethereum);
         const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
         const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
-        const emission = await contract.getPrimordialEmission(this.accountAddress);
+        const emission = await contract.getPrimordialEmission(this.accountAddress, this.selectedSlot); // Updated to include slot parameter
         console.log("Primordial Emission:", emission);
         this.primordialEmission = emission;
       } catch (error) {
@@ -345,19 +405,23 @@
      },
      async fetchStakingInfo() {
       try {
-      if (!this.accountAddress || this.selectedOption !== 'Staking') return;
+        if (!this.accountAddress || this.selectedSlot === null) {
+          console.error('Account address or slot not specified');
+          return;
+        }
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
       const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
-      const stakerInfo = await contract.getStakerInfo(this.accountAddress);
-      console.log(`Fetching staking info for address: ${this.accountAddress}`);
-      contract.getStakerInfo(this.accountAddress)
+      const slot = Number(this.selectedSlot);
+      const stakerInfo = await contract.getStakerInfo(this.accountAddress, slot);
+      console.log(`Fetching staking info for address: ${this.accountAddress} and slot: ${slot}`);
+      contract.getStakerInfo(this.accountAddress, slot)
       .then((response) => {
         console.log('Raw response:', response);
         this.stakedAmountWei = ethers.formatUnits(stakerInfo.stakedAmount, 18);
         this.stakedAmount = this.abbreviateNumber(parseFloat(ethers.formatEther(stakerInfo.stakedAmount)).toFixed(2));
-        this.lpStakeTime = stakerInfo.lpStakeTime.toString();
+        this.lpStakeTime = stakerInfo.startTime.toString();
         const lpClaimTimeInEther = ethers.formatUnits(stakerInfo.lpClaimTime, 'ether');
         this.lpClaimTime = parseFloat(lpClaimTimeInEther).toFixed(2);
       })
@@ -369,7 +433,7 @@
       console.log(`LP Stake Time: ${stakerInfo[1].toString()}`);
       console.log(`LP Claim Time: ${stakerInfo[2].toString()}`);
 
-      const basePrimordialOwed = await contract.getBasePrimordialOwed(stakerInfo.stakedAmount, this.accountAddress);
+      const basePrimordialOwed = await contract.getBasePrimordialOwed(stakerInfo.stakedAmount, this.accountAddress, slot);
       this.rewardsOwed = parseFloat(ethers.formatEther(basePrimordialOwed)).toFixed(4);
       } catch (error) {
         console.error("Error fetching staking info:", error);
@@ -559,6 +623,13 @@
           console.error('Network not detected or unsupported');
           return;
         }
+
+        // Check if the selected option is 'Staking' and if a slot is selected
+        if (this.selectedOption === 'Staking' && this.selectedSlot === null) {
+          console.error('No slot selected for staking');
+          return;
+        }
+
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
 
@@ -599,7 +670,8 @@
         const actionContract = new ethers.Contract(contractAddress, contractABI, signer);
         let actionTx;
         if (this.selectedOption === 'Staking') {
-          actionTx = await actionContract[contractMethod](amountInWei);
+          const slot = Number(this.selectedSlot);
+          actionTx = await actionContract[contractMethod](amountInWei, slot);
         } else if (this.selectedOption === 'Vesting') {
           actionTx = await actionContract[contractMethod](amountInWei, timeIndex);
         }
@@ -614,6 +686,9 @@
      }
    },
    computed: {
+     formattedStartTime() {
+       return formatDistanceToNow(new Date(this.stake.startTime * 1000), { addSuffix: true });
+     },
      ethers() {
       return ethers;
      },
@@ -700,6 +775,7 @@
           this.fetchTokenBalances();
           this.fetchPrimordialEmission();
           this.fetchVestingSlots();
+          this.fetchStakingSlots();
           //this.fetchAllSlots();
         });
         window.ethereum.on('chainChanged', (_chainId) => {
@@ -709,6 +785,7 @@
         this.fetchLPTokenBalances();
         this.fetchTokenBalances();
         this.fetchVestingSlots();
+        this.fetchStakingSlots();
         //this.fetchAllSlots();
       }
    },
@@ -726,6 +803,7 @@
         this.fetchStakingInfo();
         this.fetchPrimordialEmission();
         this.fetchVestingSlots();
+        this.fetchStakingSlots();
         //this.fetchAllSlots();
       } 
      },

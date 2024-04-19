@@ -3,12 +3,12 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_lpToken",
+        "name": "_lPAddress",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "_rewardTokenAddress",
+        "name": "_primordialPePeAddress",
         "type": "address"
       }
     ],
@@ -78,11 +78,93 @@
         "internalType": "uint256",
         "name": "_stakedAmount",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "slot",
+        "type": "uint256"
       }
     ],
     "name": "claimReward",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getAllSlots",
+    "outputs": [
+      {
+        "internalType": "bool[3]",
+        "name": "",
+        "type": "bool[3]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "startTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lastClaimTime",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LPStaking.Stake[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getAllStakes",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "startTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lastClaimTime",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LPStaking.Stake[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -96,6 +178,11 @@
         "internalType": "address",
         "name": "_staker",
         "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "slot",
+        "type": "uint256"
       }
     ],
     "name": "getBasePrimordialOwed",
@@ -115,6 +202,11 @@
         "internalType": "address",
         "name": "_address",
         "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "slot",
+        "type": "uint256"
       }
     ],
     "name": "getPrimordialEmission",
@@ -132,8 +224,54 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "slot",
+        "type": "uint256"
+      }
+    ],
+    "name": "getStake",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "startTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lastClaimTime",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LPStaking.Stake",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "_staker",
         "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "slot",
+        "type": "uint256"
       }
     ],
     "name": "getStakerInfo",
@@ -145,7 +283,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "lpStakeTime",
+        "name": "startTime",
         "type": "uint256"
       },
       {
@@ -158,46 +296,8 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "lpClaimTimes",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "lpStakeTimes",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [],
-    "name": "lpToken",
+    "name": "lPToken",
     "outputs": [
       {
         "internalType": "contract IERC20",
@@ -223,17 +323,10 @@
   },
   {
     "inputs": [],
-    "name": "renounceOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "rewardToken",
+    "name": "primordialPePeToken",
     "outputs": [
       {
-        "internalType": "contract IERC20",
+        "internalType": "contract IPrimordialPePe",
         "name": "",
         "type": "address"
       }
@@ -242,14 +335,8 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_lpToken",
-        "type": "address"
-      }
-    ],
-    "name": "setLPToken",
+    "inputs": [],
+    "name": "renounceOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -258,13 +345,45 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_rewardTokenAddress",
+        "name": "_primordialPePeAddress",
         "type": "address"
       }
     ],
-    "name": "setRewardToken",
+    "name": "setPrimordialPePe",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_lPAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setlPToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "stakeCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -273,35 +392,16 @@
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "slot",
+        "type": "uint256"
       }
     ],
     "name": "stakeLPToken",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "stakers",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "stakedAmount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "lpStaked",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -323,11 +423,50 @@
         "internalType": "uint256",
         "name": "_stakedAmount",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "slot",
+        "type": "uint256"
       }
     ],
     "name": "unstakeLPToken",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "userStakes",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "startTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "lastClaimTime",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   }
 ]

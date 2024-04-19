@@ -1,13 +1,13 @@
 <template>
   <div class="flex items-center justify-left w-full max-w-[260px]">
     <input
-      type="number"
+      type="text"
       placeholder="0"
-      v-model="amount"
+      v-model="inputValue"
       class="border-none  focus:outline-none bg-transparent w-full outline-none text-4xl text-yellow-300 overflow-hidden whitespace-nowrap text-overflow-ellipsis text-left placeholder-blue"
       ref="amountInput"
-      @input="emitInputValue"
-      :readonly="!isEditable"
+      :disabled="!isEditable"
+      @input="validateInput"
     />
   </div>
 </template>
@@ -16,27 +16,55 @@
 export default {
   name: 'AmountInput',
   props: {
+    // Added the prop here
+    displayValue: {
+    type: String,
+    default: ''
+  },
     maxAmount: {
       type: String,
       default: "0"
     },
     isEditable: {
       type: Boolean,
-      defaul: true
+      default: true
     }
   },
   data() {
     return {
-      amount: null
+      amount: ''
     };
+  },
+  computed: {
+    inputValue: {
+      get() {
+        // Attempt to allow the estimate to show if we designate the Input Field to not usable
+        return this.isEditable ? this.amount : this.displayValue;
+      },
+      set(value) {
+        if (this.isEditable) {
+          this.amount = value;
+        }
+      }
+    }
   },
   methods: {
   setAmount(value) {
     this.amount = value;
-    this.emitInputValue({ target: { value: this.amount } });
+    this.emitInputValue();
   },
-  emitInputValue(event) {
-    this.$emit('inputChanged', event.target.value);
+  emitInputValue() {
+    this.$emit('inputChanged', this.amount);
+  },
+  validateInput(event) {
+    const value = event.target.value;
+    const regex = /^[0-9]*\.?[0-9]*$/;
+    if (!regex.test(value)) {
+      this.amount = value.slice(0, -1);
+    } else {
+      this.amount = value;
+    }
+    this.emitInputValue();
   }
 }
 }
