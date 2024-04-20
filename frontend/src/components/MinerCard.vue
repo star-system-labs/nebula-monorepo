@@ -88,10 +88,10 @@ import supplyPond from '@/assets/supply-pond.png';
 const chainId = 1;
 const PEPE_ADDRESS = '0x6982508145454ce325ddbe47a25d4ec3d2311933';
 const PEPE = new Token(chainId, PEPE_ADDRESS, 18);0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
-console.log("!!!! MR. PEPE: ", PEPE);
+console.log("!!!! MR. PEPE: ", PEPE.address);
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const WETH = new Token(chainId, WETH_ADDRESS, 18);
-console.log("!!!!WETH: ", WETH);
+console.log("!!!!WETH: ", WETH.address);
 
 export default {
   components: {
@@ -162,8 +162,8 @@ export default {
         console.error("Quoter contract not instantiated");
         return;
       }
-      let tokenIn = WETH;
-      let tokenOut = PEPE;
+      let tokenIn = WETH.address;
+      let tokenOut = PEPE.address;
       let fee = 500;
       console.log("fee: ", fee);
       const amountInWei = ethers.parseUnits(ethAmount);
@@ -179,11 +179,11 @@ export default {
         amountInWei: ${amountInWei.toString()},
         sqrtPriceLimitX96: 0`);
       try {
-        console.log("tokenIn address:", WETH);
+        console.log("tokenIn address:", tokenIn);
         console.log("tokenOut address:", tokenOut);
         const quotedAmountOut = await quoterContract.quoteExactInputSingle(
-            tokenIn.address,
-            tokenOut.address,
+            tokenIn,
+            tokenOut,
             fee,
             amountInWei,
             0
