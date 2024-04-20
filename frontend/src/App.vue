@@ -99,7 +99,6 @@ export default {
     return {
       rawPpepeBalance: null,
       rawPepeBalance: null,
-      rawPndcBalance: null,
       rawShibBalance: null,
       accountAddress: null,
       balance: null,
@@ -112,7 +111,6 @@ export default {
       contractAddresses: {
         mainnet: {
           pepe: '0x6982508145454ce325ddbe47a25d4ec3d2311933',
-          pond: '0x423f4e6138E475D85CF7Ea071AC92097Ed631eea',
           shib: '0xfD1450a131599ff34f3Be1775D8c8Bf79E353D8c',
           ppepe: '0x98830a6cc6f8964cec4ffd65f19edebba6fef865'
         },
@@ -120,12 +118,10 @@ export default {
           pepe: '0xf73BBA852bb30553326fA837f091aB7Ce740D0a9',
           shib: '0x46cB0AfFA874719c7b273Df80954CC98199e2d69',
           ppepe: '0xB6Ad6AD0364Eb5E8B109a55F01F4F68971B40E2B',
-          pond: '0xf73BBA852bb30553326fA837f091aB7Ce740D0a9',
         }
       },
       currentContractAddresses: {
         pepe: null,
-        pond: null,
         shib: null,
         ppepe: null
       },
@@ -252,24 +248,24 @@ export default {
           this.pepeBalance = "0";
           }
 
-          if (this.currentContractAddresses.pndc) {
-          const pndcContract = new Contract(this.currentContractAddresses.pndc, ERC20_ABI, provider);
-          try {
-            const pndcTokenBalance = await pndcContract.balanceOf(this.accountAddress);
-            this.rawPndcBalance = formatEther(pndcTokenBalance);
-            this.pndcBalance = this.abbreviateNumber(this.rawPndcBalance);
-            // console.log("PNDC Token balance:", pndcTokenBalance.toString());
-            // console.log("Raw Balance:", this.rawPndcBalance.toString());
-            // console.log("Pond Balance:", this.pndcBalance.toString());
-            this.pndcBalance = this.formatBalance(formatEther(pndcTokenBalance));
-          } catch (error) {
-            console.error("Error fetching PNDC balance:", error);
-            this.pndcBalance = "0";
-          }
-          } else {
-            console.error("POND contract address is null");
-            this.pndcBalance = "0";
-          }
+          // if (this.currentContractAddresses.pndc) {
+          // const pndcContract = new Contract(this.currentContractAddresses.pndc, ERC20_ABI, provider);
+          // try {
+          //   const pndcTokenBalance = await pndcContract.balanceOf(this.accountAddress);
+          //   this.rawPndcBalance = formatEther(pndcTokenBalance);
+          //   this.pndcBalance = this.abbreviateNumber(this.rawPndcBalance);
+          //   // console.log("PNDC Token balance:", pndcTokenBalance.toString());
+          //   // console.log("Raw Balance:", this.rawPndcBalance.toString());
+          //   // console.log("Pond Balance:", this.pndcBalance.toString());
+          //   this.pndcBalance = this.formatBalance(formatEther(pndcTokenBalance));
+          // } catch (error) {
+          //   console.error("Error fetching PNDC balance:", error);
+          //   this.pndcBalance = "0";
+          // }
+          // } else {
+          //   console.error("POND contract address is null");
+          //   this.pndcBalance = "0";
+          // }
 
           if (this.currentContractAddresses.shib) {
           const shibContract = new Contract(this.currentContractAddresses.shib, ERC20_ABI, provider);
@@ -367,24 +363,24 @@ export default {
       this.pepeBalance = "0";
       }
 
-      if (this.currentContractAddresses.pndc) {
-      const pndcContract = new Contract(this.currentContractAddresses.pndc, ERC20_ABI, provider);
-      try {
-        const pndcTokenBalance = await pndcContract.balanceOf(this.accountAddress);
-        this.rawPndcBalance = formatEther(pndcTokenBalance);
-        this.pndcBalance = this.abbreviateNumber(this.rawPndcBalance);
-        // console.log("PNDC Token balance:", pndcTokenBalance.toString());
-        // console.log("Raw Balance:", this.rawPndcBalance.toString());
-        // console.log("Pond Balance:", this.pndcBalance.toString());
-        this.pndcBalance = this.formatBalance(formatEther(pndcTokenBalance));
-      } catch (error) {
-        console.error("Error fetching PNDC balance:", error);
-        this.pndcBalance = "0";
-      }
-      } else {
-        console.error("POND contract address is null");
-        this.pndcBalance = "0";
-      }
+      // if (this.currentContractAddresses.pndc) {
+      // const pndcContract = new Contract(this.currentContractAddresses.pndc, ERC20_ABI, provider);
+      // try {
+      //   const pndcTokenBalance = await pndcContract.balanceOf(this.accountAddress);
+      //   this.rawPndcBalance = formatEther(pndcTokenBalance);
+      //   this.pndcBalance = this.abbreviateNumber(this.rawPndcBalance);
+      //   // console.log("PNDC Token balance:", pndcTokenBalance.toString());
+      //   // console.log("Raw Balance:", this.rawPndcBalance.toString());
+      //   // console.log("Pond Balance:", this.pndcBalance.toString());
+      //   this.pndcBalance = this.formatBalance(formatEther(pndcTokenBalance));
+      // } catch (error) {
+      //   console.error("Error fetching PNDC balance:", error);
+      //   this.pndcBalance = "0";
+      // }
+      // } else {
+      //   console.error("POND contract address is null");
+      //   this.pndcBalance = "0";
+      // }
 
       if (this.currentContractAddresses.shib) {
       const shibContract = new Contract(this.currentContractAddresses.shib, ERC20_ABI, provider);
