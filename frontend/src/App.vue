@@ -235,13 +235,13 @@ export default {
           if (this.currentContractAddresses.pepe) {
           const pepeContract = new Contract(this.currentContractAddresses.pepe, ERC20_ABI, provider);
           try {
-            console.log("Contract address:", this.currentContractAddresses.pepe);
+            //console.log("Contract address:", this.currentContractAddresses.pepe);
             const pepeTokenBalance = await pepeContract.balanceOf(this.accountAddress);
             this.rawPepeBalance = formatEther(pepeTokenBalance);
             this.pepeBalance = this.abbreviateNumber(this.rawPepeBalance);
-            console.log("PEPE Token balance:", pepeTokenBalance.toString());
-            console.log("Raw Balance:", this.rawPepeBalance.toString());
-            console.log("Pepe Balance:", this.pepeBalance.toString());
+            // console.log("PEPE Token balance:", pepeTokenBalance.toString());
+            // console.log("Raw Balance:", this.rawPepeBalance.toString());
+            // console.log("Pepe Balance:", this.pepeBalance.toString());
             this.pepeBalance = this.formatBalance(formatEther(pepeTokenBalance));
           } catch (error) {
             console.error("Error fetching PEPE balance:", error);
@@ -258,9 +258,9 @@ export default {
             const pndcTokenBalance = await pndcContract.balanceOf(this.accountAddress);
             this.rawPndcBalance = formatEther(pndcTokenBalance);
             this.pndcBalance = this.abbreviateNumber(this.rawPndcBalance);
-            console.log("PNDC Token balance:", pndcTokenBalance.toString());
-            console.log("Raw Balance:", this.rawPndcBalance.toString());
-            console.log("Pond Balance:", this.pndcBalance.toString());
+            // console.log("PNDC Token balance:", pndcTokenBalance.toString());
+            // console.log("Raw Balance:", this.rawPndcBalance.toString());
+            // console.log("Pond Balance:", this.pndcBalance.toString());
             this.pndcBalance = this.formatBalance(formatEther(pndcTokenBalance));
           } catch (error) {
             console.error("Error fetching PNDC balance:", error);
@@ -277,9 +277,9 @@ export default {
             const shibTokenBalance = await shibContract.balanceOf(this.accountAddress);
             this.rawShibBalance = formatEther(shibTokenBalance);
             this.shibBalance = this.abbreviateNumber(this.rawShibBalance);
-            console.log("SHIB Token balance:", shibTokenBalance.toString());
-            console.log("Raw Balance:", this.rawShibBalance.toString());
-            console.log("Shib Balance:", this.shibBalance.toString());
+            // console.log("SHIB Token balance:", shibTokenBalance.toString());
+            // console.log("Raw Balance:", this.rawShibBalance.toString());
+            // console.log("Shib Balance:", this.shibBalance.toString());
             this.shibBalance = this.formatBalance(formatEther(shibTokenBalance));
           } catch (error) {
             console.error("Error fetching SHIB balance:", error);
@@ -296,12 +296,12 @@ export default {
             const ppepeTokenBalance = await ppepeContract.balanceOf(this.accountAddress);
             this.rawPpepeBalance = formatEther(ppepeTokenBalance);
             this.ppepeBalance = this.abbreviateNumber(this.rawPpepeBalance);
-            console.log("PPEPE Token balance:", ppepeTokenBalance.toString());
-            console.log("Raw Balance:", this.rawPpepeBalance.toString());
-            console.log("Ppepe Balance:", this.ppepeBalance.toString());
+            // console.log("PPEPE Token balance:", ppepeTokenBalance.toString());
+            // console.log("Raw Balance:", this.rawPpepeBalance.toString());
+            // console.log("Ppepe Balance:", this.ppepeBalance.toString());
             this.ppepeBalance = this.formatBalance(formatEther(ppepeTokenBalance));
             this.abbreviatedPpepeBalance = this.abbreviateNumber(this.rawPpepeBalance);
-            console.log('Abbreviated Balance:', this.abbreviatedPpepeBalance);
+            //console.log('Abbreviated Balance:', this.abbreviatedPpepeBalance);
           } catch (error) {
             console.error("Error fetching PPEPE balance:", error);
             this.ppepeBalance = "0";
@@ -354,9 +354,9 @@ export default {
         const pepeTokenBalance = await pepeContract.balanceOf(this.accountAddress);
         this.rawPepeBalance = formatEther(pepeTokenBalance);
         this.pepeBalance = this.abbreviateNumber(this.rawPepeBalance);
-        console.log("PEPE Token balance:", pepeTokenBalance.toString());
-        console.log("Raw Balance:", this.rawPepeBalance.toString());
-        console.log("Pepe Balance:", this.pepeBalance.toString());
+        // console.log("PEPE Token balance:", pepeTokenBalance.toString());
+        // console.log("Raw Balance:", this.rawPepeBalance.toString());
+        // console.log("Pepe Balance:", this.pepeBalance.toString());
         this.pepeBalance = this.abbreviateNumber(formatEther(pepeTokenBalance));
       } catch (error) {
         console.error("Error fetching PEPE balance:", error);
@@ -373,9 +373,9 @@ export default {
         const pndcTokenBalance = await pndcContract.balanceOf(this.accountAddress);
         this.rawPndcBalance = formatEther(pndcTokenBalance);
         this.pndcBalance = this.abbreviateNumber(this.rawPndcBalance);
-        console.log("PNDC Token balance:", pndcTokenBalance.toString());
-        console.log("Raw Balance:", this.rawPndcBalance.toString());
-        console.log("Pond Balance:", this.pndcBalance.toString());
+        // console.log("PNDC Token balance:", pndcTokenBalance.toString());
+        // console.log("Raw Balance:", this.rawPndcBalance.toString());
+        // console.log("Pond Balance:", this.pndcBalance.toString());
         this.pndcBalance = this.formatBalance(formatEther(pndcTokenBalance));
       } catch (error) {
         console.error("Error fetching PNDC balance:", error);
@@ -392,9 +392,9 @@ export default {
         const shibTokenBalance = await shibContract.balanceOf(this.accountAddress);
         this.rawShibBalance = formatEther(shibTokenBalance);
         this.shibBalance = this.abbreviateNumber(this.rawShibBalance);
-        console.log("SHIB Token balance:", shibTokenBalance.toString());
-        console.log("Raw Balance:", this.rawShibBalance.toString());
-        console.log("Shib Balance:", this.shibBalance.toString());
+        // console.log("SHIB Token balance:", shibTokenBalance.toString());
+        // console.log("Raw Balance:", this.rawShibBalance.toString());
+        // console.log("Shib Balance:", this.shibBalance.toString());
         this.shibBalance = this.formatBalance(formatEther(shibTokenBalance));
       } catch (error) {
         console.error("Error fetching SHIB balance:", error);
@@ -411,12 +411,12 @@ export default {
         const ppepeTokenBalance = await ppepeContract.balanceOf(this.accountAddress);
         this.rawPpepeBalance = formatEther(ppepeTokenBalance);
         this.ppepeBalance = this.abbreviateNumber(this.rawPpepeBalance);
-        console.log("PPEPE Token balance:", ppepeTokenBalance.toString());
-        console.log("Raw Balance:", this.rawPpepeBalance.toString());
-        console.log("Ppepe Balance:", this.ppepeBalance.toString());
+        // console.log("PPEPE Token balance:", ppepeTokenBalance.toString());
+        // console.log("Raw Balance:", this.rawPpepeBalance.toString());
+        // console.log("Ppepe Balance:", this.ppepeBalance.toString());
         this.ppepeBalance = this.formatBalance(formatEther(ppepeTokenBalance));
         this.abbreviatedPpepeBalance = this.abbreviateNumber(this.rawPpepeBalance);
-        console.log('Abbreviated Balance:', this.abbreviatedPpepeBalance);
+        //console.log('Abbreviated Balance:', this.abbreviatedPpepeBalance);
       } catch (error) {
         console.error("Error fetching PPEPE balance:", error);
         this.ppepeBalance = "0";
