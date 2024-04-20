@@ -162,9 +162,9 @@ export default {
         console.error("Quoter contract not instantiated");
         return;
       }
-      let tokenIn = WETH.address;
+      let tokenIn = WETH;
       let tokenOut = PEPE;
-      let fee = 500n;
+      let fee = 500;
       console.log("fee: ", fee);
       const amountInWei = ethers.parseUnits(ethAmount);
       console.log("amountInWei: ", amountInWei);
@@ -172,15 +172,21 @@ export default {
         console.error("Token addresses are not set.");
         return;
       }
+      console.log(`Calling quoteExactInputSingle with:
+        tokenIn: ${tokenIn},
+        tokenOut: ${tokenOut},
+        fee: ${fee.toString()},
+        amountInWei: ${amountInWei.toString()},
+        sqrtPriceLimitX96: 0`);
       try {
-        console.log("tokenIn address:", WETH.address);
-        console.log("tokenOut address:", tokenOut.address);
+        console.log("tokenIn address:", WETH);
+        console.log("tokenOut address:", tokenOut);
         const quotedAmountOut = await quoterContract.quoteExactInputSingle(
-            tokenIn,
+            tokenIn.address,
             tokenOut.address,
-            500n,
+            fee,
             amountInWei,
-            0n
+            0
         );
         console.log(`Quoted Amount Out: ${ethers.formatUnits(quotedAmountOut, 'ether')}`);
         return quotedAmountOut;
