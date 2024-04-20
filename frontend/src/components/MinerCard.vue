@@ -162,7 +162,7 @@ export default {
         console.error("Quoter contract not instantiated");
         return;
       }
-      let tokenIn = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+      let tokenIn = WETH.address;
       let tokenOut = PEPE;
       let fee = 500n;
       console.log("fee: ", fee);
@@ -176,7 +176,7 @@ export default {
         console.log("tokenIn address:", WETH.address);
         console.log("tokenOut address:", tokenOut.address);
         const quotedAmountOut = await quoterContract.quoteExactInputSingle(
-            tokenIn.address,
+            tokenIn,
             tokenOut.address,
             500n,
             amountInWei,
