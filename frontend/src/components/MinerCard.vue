@@ -79,15 +79,16 @@ import ConnectWalletButton from './ConnectWalletButton.vue';
 import TokenInputCard from './TokenInputCard.vue';
 import MineButton from './MineButton.vue';
 import { ethers } from 'ethers';
-
-import { Token, WETH, Fetcher, Route, Trade, TokenAmount, TradeType } from '@uniswap/sdk';
+import QuoterABI from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
+import { Token, WETH, Fetcher, TokenAmount } from '@uniswap/sdk';
 
 import supplyPepe from '@/assets/supply-pepe.png';
 import supplyPond from '@/assets/supply-pond.png';
 
-const chainId = '1';
+const chainId = 1;
 const PEPE_ADDRESS = '0x6982508145454ce325ddbe47a25d4ec3d2311933';
 const PEPE = new Token(chainId, PEPE_ADDRESS, 18);
+console.log("!!!! MR. PEPE: ", PEPE);
 
 export default {
   components: {
@@ -134,16 +135,43 @@ export default {
   },
   methods: {
     async fetchPairData() {
-      const pair = await Fetcher.fetchPairData(PEPE, WETH[chainId]);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const pair = await Fetcher.fetchPairData(PEPE, WETH[chainId], provider);
       return pair;
     },
+    async estimatePEPEFromETH(ethAmount) {
+      // Here we try to setup the data grab from the uniswap/sdk
+      const wethAmount = new TokenAmount(WETH[chainId], ethAmount);
+      console.log("wethAmount: ", wethAmount);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const quoterContractAddress = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6";
+      //const quoterContractAddress = Quoter.address;
+      console.log("quoterContractAddress: ", quoterContractAddress);
+      const quoterContract = new ethers.Contract(quoterContractAddress, QuoterABI.abi, provider);
+
+      let token0 = PEPE;
+      let token1 = WETH[chainId];
+      let fee = 500;
+      const amountIn = ethers.parseUnits(ethAmount.toString(), 'ether');
+
+      const quotedAmountOut = await quoterContract.callStatic.quoteExactInputSingle(
+        token0,
+        token1,
+        fee,
+        amountIn,
+        0
+      );
+
+      return quotedAmountOut;
+    },
     async estimateAddLiquidity(swappedAmtOut, ethAmount) {
+      // TODO update using quoter contract to retrieve quote for LP
+      // Lp estimate function here
       const pair = await this.fetchPairData();
       //const route = new Route([pair], WETH[chainId]);
       const tokenAmount = new TokenAmount(PEPE, swappedAmtOut.toString());
       const wethAmount = new TokenAmount(WETH[chainId], ethAmount.toString());
 
-      // Assuming you want to add liquidity in a 50/50 ratio
       const totalSupply = pair.liquidityToken.totalSupply.raw;
       const pepeReserve = pair.reserveOf(PEPE).raw;
       const wethReserve = pair.reserveOf(WETH[chainId]).raw;
@@ -154,21 +182,9 @@ export default {
 
         return liquidityMinted.toSignificant(6);
     },
-    async estimatePEPEFromETH(ethAmount) {
-      // Here we try to setup the data grab from the uniswap/sdk
-      const wethAmount = WETH[chainId].amount(ethAmount.toString());
-      console.log("wethAmount: ", wethAmount);
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const pair = await Fetcher.fetchPairData(PEPE, WETH[chainId], provider);
-      console.log("pair: ", pair);
-      const route = new Route([pair], WETH[chainId]);
-      console.log("route: ", route);
-      const trade = new Trade(route, new TokenAmount(WETH[chainId], wethAmount.raw.toString()), TradeType.EXACT_INPUT);
-      console.log("trade: ", trade);
-      return trade.outputAmount.toSignificant(6);
-    },
     async calculateQuote(ethAmount) {
       const swappedAmtOut = await this.estimatePEPEFromETH(ethAmount);
+      console.log('swappedAmtOut: ', swappedAmtOut, ethAmount);
       const _totalLiquidity = await this.estimateAddLiquidity(swappedAmtOut, ethAmount);
       console.log("swappedAmtOut: ", swappedAmtOut);
       // quote = (_totalLiquidity * 4) + (swappedAmtOut * 8);
@@ -203,6 +219,7 @@ export default {
     handleAmountChanged(value) {
       console.log("Amount Changed: ", value)
       this.enteredAmountData = value;
+      this.calculateQuote(value);
       this.walletBalanceData = this.ethBalance;
     },
     getTokenLogo(token) {
