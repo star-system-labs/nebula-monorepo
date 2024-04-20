@@ -80,15 +80,18 @@ import TokenInputCard from './TokenInputCard.vue';
 import MineButton from './MineButton.vue';
 import { ethers } from 'ethers';
 import QuoterABI from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
-import { Token, WETH, Fetcher, TokenAmount } from '@uniswap/sdk';
+import { Token, Fetcher, TokenAmount } from '@uniswap/sdk';
 
 import supplyPepe from '@/assets/supply-pepe.png';
 import supplyPond from '@/assets/supply-pond.png';
 
 const chainId = 1;
 const PEPE_ADDRESS = '0x6982508145454ce325ddbe47a25d4ec3d2311933';
-const PEPE = new Token(chainId, PEPE_ADDRESS, 18);
+const PEPE = new Token(chainId, PEPE_ADDRESS, 18);0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
 console.log("!!!! MR. PEPE: ", PEPE);
+const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+const WETH = new Token(chainId, WETH_ADDRESS, 18);
+console.log("!!!!WETH: ", WETH);
 
 export default {
   components: {
@@ -120,6 +123,7 @@ export default {
       estimatedReward: 0,
       liquidityEstimate: 0,
       selectedToken: "PePe",
+      //accountAddress: null,
       showCopeSequence: false,
       enteredAmountData: '0.00',
       walletBalanceData: '0.00',
@@ -140,29 +144,49 @@ export default {
       return pair;
     },
     async estimatePEPEFromETH(ethAmount) {
+      if (!this.accountAddress) {
+        console.error("Account address is not set.");
+        return;
+      }
       // Here we try to setup the data grab from the uniswap/sdk
-      const wethAmount = new TokenAmount(WETH[chainId], ethAmount);
-      console.log("wethAmount: ", wethAmount);
+      //const wethAmount = new TokenAmount(WETH[chainId], ethAmount);
+      //console.log("wethAmount: ", wethAmount);
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const quoterContractAddress = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6";
-      //const quoterContractAddress = Quoter.address;
-      console.log("quoterContractAddress: ", quoterContractAddress);
-      const quoterContract = new ethers.Contract(quoterContractAddress, QuoterABI.abi, provider);
+      console.log("accountAddress: ", this.accountAddress);
+      const signer = await provider.getSigner(this.accountAddress);
 
-      let token0 = PEPE;
-      let token1 = WETH[chainId];
-      let fee = 500;
-      const amountIn = ethers.parseUnits(ethAmount.toString(), 'ether');
-
-      const quotedAmountOut = await quoterContract.callStatic.quoteExactInputSingle(
-        token0,
-        token1,
-        fee,
-        amountIn,
-        0
-      );
-
-      return quotedAmountOut;
+      const QUOTER_CONTRACT_ADDRESS = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6";
+      console.log("QUOTER_CONTRACT_ADDRESS: ", QUOTER_CONTRACT_ADDRESS);
+      const quoterContract = new ethers.Contract(QUOTER_CONTRACT_ADDRESS, QuoterABI.abi, signer);
+      if (!quoterContract) {
+        console.error("Quoter contract not instantiated");
+        return;
+      }
+      let tokenIn = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+      let tokenOut = PEPE;
+      let fee = 500n;
+      console.log("fee: ", fee);
+      const amountInWei = ethers.parseUnits(ethAmount);
+      console.log("amountInWei: ", amountInWei);
+      if (!tokenIn || !tokenOut) {
+        console.error("Token addresses are not set.");
+        return;
+      }
+      try {
+        console.log("tokenIn address:", WETH.address);
+        console.log("tokenOut address:", tokenOut.address);
+        const quotedAmountOut = await quoterContract.quoteExactInputSingle(
+            tokenIn.address,
+            tokenOut.address,
+            500n,
+            amountInWei,
+            0n
+        );
+        console.log(`Quoted Amount Out: ${ethers.formatUnits(quotedAmountOut, 'ether')}`);
+        return quotedAmountOut;
+      } catch (error) {
+        console.error('Error getting quote:', error);
+      }
     },
     async estimateAddLiquidity(swappedAmtOut, ethAmount) {
       // TODO update using quoter contract to retrieve quote for LP
@@ -184,6 +208,10 @@ export default {
     },
     async calculateQuote(ethAmount) {
       const swappedAmtOut = await this.estimatePEPEFromETH(ethAmount);
+      if (typeof swappedAmtOut === 'undefined') {
+        console.error('Failed to get swappedAmtOut');
+        return;
+      }
       console.log('swappedAmtOut: ', swappedAmtOut, ethAmount);
       const _totalLiquidity = await this.estimateAddLiquidity(swappedAmtOut, ethAmount);
       console.log("swappedAmtOut: ", swappedAmtOut);
