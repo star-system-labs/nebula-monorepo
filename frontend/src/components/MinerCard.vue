@@ -57,7 +57,7 @@
       :currencyLogo="getTokenLogo(selectedToken)"
       :balance="abbreviatedPpepeBalance"
       :isEditable="false"
-      :displayValue="estimatedReward.toString()"
+      :estimatedReward="estimatedReward.toString()"
       :accountAddress="accountAddress"
       :quote="localQuote"
       :isMaxSelectable="false"
@@ -241,6 +241,11 @@ export default {
       }
     },
     async calculateQuote(ethAmount) {
+      if (!ethAmount || parseFloat(ethAmount) === 0) {
+        this.estimatedReward = '0';
+        console.log('ethAmount is zero, setting estimatedReward to 0');
+        return;
+      }
       const swappedAmtOut = await this.swapQuote(ethAmount);
       if (typeof swappedAmtOut === 'undefined') {
         console.error('Failed to get swappedAmtOut');
@@ -251,6 +256,7 @@ export default {
       const quote = (_totalLiquidity * 4) + (swappedAmtOut * 8);
       console.log("Quote: ", quote);
       this.estimatedReward = quote;
+      console.log('estimatedReward set:', this.estimatedReward);
     },
     abbreviateNumber(value) {
       let newValue = parseFloat(value);

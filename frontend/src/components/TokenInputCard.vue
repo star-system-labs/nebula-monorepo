@@ -6,7 +6,7 @@
         :currency="currency" 
         :maxAmount="balance" 
         :isEditable="isEditable" 
-        :displayValue="estimatedReward"
+        :displayValue="estimatedReward.toString()"
         @inputChanged="emitAmount" 
         ref="amountInput" 
         />
@@ -42,7 +42,6 @@ export default {
     AmountInput,
   },
   props: {
-    // added the prop here
     estimatedReward: {
       type: String,
       default: '0.00'
@@ -95,23 +94,27 @@ export default {
     },
   },
   computed: {
-  correctBalance() {
-    if (this.isLPStaking) {
-      const keyMapping = {
-        'ppepe': 'PrimordialPePeLP',
-        'pepe': 'PePeLP',
-        'shib': 'ShibLP',
-      };
-      const normalizedCurrency = this.currency.toLowerCase();
-      const mappedKey = keyMapping[normalizedCurrency] || normalizedCurrency;
-      const balance = this.lpTokenBalances[mappedKey] || '0';
-      console.log(`LP Balance for ${normalizedCurrency} (${mappedKey}):`, balance);
-      return balance;
-    }
-    return this.isToken ? this.rawBalance : this.balance;
-  }
-},
+    correctBalance() {
+      if (this.isLPStaking) {
+        const keyMapping = {
+          'ppepe': 'PrimordialPePeLP',
+          'pepe': 'PePeLP',
+          'shib': 'ShibLP',
+        };
+        const normalizedCurrency = this.currency.toLowerCase();
+        const mappedKey = keyMapping[normalizedCurrency] || normalizedCurrency;
+        const balance = this.lpTokenBalances[mappedKey] || '0';
+        console.log(`LP Balance for ${normalizedCurrency} (${mappedKey}):`, balance);
+        return balance;
+      }
+      return this.isToken ? this.rawBalance : this.balance;
+    },
+  },
   methods: {
+    emitAmount(value) {
+      console.log('Emitting amount:', value);
+      this.$emit('amountChanged', value);
+    },
     handleMaxClicked() {
       let maxAmount = parseFloat(this.correctBalance);
       if (Number.isInteger(maxAmount)) {
@@ -121,12 +124,16 @@ export default {
       }
       this.$refs.amountInput.setAmount(maxAmount);
       this.emitAmount(maxAmount);
+      console.log('Max clicked, maxAmount:', this.correctBalance);
     },
-    emitAmount(value) {
-      this.$emit('amountChanged', value);
+  },
+  watch: {
+    estimatedReward(newVal, oldVal) {
+      console.log(`estimatedReward changed in TokenInputCard from ${oldVal} to ${newVal}`);
     }
   },
   mounted() {
+    console.log('TokenInputCard mounted with estimatedReward:', this.estimatedReward);
     //console.log(this.lpTokenBalances);
     //console.log(this.tokenBalances);
   }
