@@ -78,17 +78,18 @@
 import ConnectWalletButton from './ConnectWalletButton.vue';
 import TokenInputCard from './TokenInputCard.vue';
 import MineButton from './MineButton.vue';
-import { Token, TokenAmount, Pair } from '@uniswap/sdk-core';
+const { Token, CurrencyAmount } = require('@uniswap/sdk-core');
+import { Pair } from '@uniswap/v2-sdk';
 import { ethers } from 'ethers';
 import supplyPepe from '@/assets/supply-pepe.png';
 import supplyPond from '@/assets/supply-pond.png';
 
 const chainId = 1;
 const PEPE_ADDRESS = '0x6982508145454ce325ddbe47a25d4ec3d2311933';
-const PEPE = new Token(1, PEPE_ADDRESS, 18);
+const PEPE = new Token(1, PEPE_ADDRESS, 18, 'PEPE', 'Pepe Token');
 console.log("!!!! MR. PEPE: ", PEPE.address);
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-const WETH = new Token(1, WETH_ADDRESS, 18);
+const WETH = new Token(1, WETH_ADDRESS, 18, 'WETH', 'Wrapped Ether');
 console.log("!!!!WETH: ", WETH.address);
 //const pair = '0xA43fe16908251ee70EF74718545e4FE6C5cCEc9f';
 
@@ -165,13 +166,13 @@ export default {
       const { reserve0, reserve1, token0Address, token1Address } = pairData;
       const token0 = new Token(chainId, token0Address, 18);
       const token1 = new Token(chainId, token1Address, 18);
-      const tokenAmount0 = new TokenAmount(token0, BigInt(reserve0.toString())); // eslint-disable-line no-undef
-      const tokenAmount1 = new TokenAmount(token1, BigInt(reserve1.toString())); // eslint-disable-line no-undef
+      const tokenAmount0 = new CurrencyAmount(token0, BigInt(reserve0.toString())); // eslint-disable-line no-undef
+      const tokenAmount1 = new CurrencyAmount(token1, BigInt(reserve1.toString())); // eslint-disable-line no-undef
       const pair = new Pair(tokenAmount0, tokenAmount1);
 
       return pair;
     },
-    async Swapquote(ethAmount) {
+    async swapQuote(ethAmount) {
       const infuraUrl = process.env.VUE_APP_INFURA_LINK;
       const provider = new ethers.JsonRpcProvider(infuraUrl, undefined, {
         staticNetwork: true
@@ -200,26 +201,55 @@ export default {
       const amountsOut = await router.getAmountsOut(amountsIn, path);
       const estimatedTokens = ethers.formatUnits(amountsOut[1], 'ether');
       console.log("Estimated output tokens:", estimatedTokens, "For Token: ", pairData.token1Address, "For Pair: ", pairData);
-      return estimatedTokens;
+      return estimatedTokens/2;
       } catch (error) {
         console.error("Error getting swap estimate:", error);
       }
     },
+    async estimateAddLiquidity(swappedAmtOut, ethAmount) {
+      const ethers = require('ethers');
+
+      try {
+        const pairData = await this.fetchPairData();
+        if (!pairData) {
+          console.error('Failed to fetch pair data');
+          return;
+        }
+
+        const { reserve0, reserve1, token0Address, token1Address } = pairData;
+        const token0 = new Token(1, token0Address, 18);
+        const token1 = new Token(1, token1Address, 18);
+        const token0Decimals = 18;
+        const swappedAmtOutBigInt = ethers.parseUnits(swappedAmtOut.toString(), token0Decimals);
+
+        const pepeAmount = CurrencyAmount.fromRawAmount(token0, swappedAmtOutBigInt.toString());
+        const ethAmountWei = ethers.parseUnits((ethAmount / 2).toString(), 'ether');
+        const wethAmount = CurrencyAmount.fromRawAmount(token1, ethAmountWei.toString());
+
+        const pair = new Pair(new CurrencyAmount(token0, reserve0.toString()), new CurrencyAmount(token1, reserve1.toString()));
+
+        const liquidityMinted = pair.getLiquidityMinted(
+          new CurrencyAmount(pair.liquidityToken, '0'),
+          pepeAmount,
+          wethAmount
+        );
+
+        console.log(`Estimated liquidity tokens to be minted: ${liquidityMinted.toSignificant(6)}`);
+        return liquidityMinted.toSignificant(6);
+      } catch (error) {
+        console.error("Error estimating add liquidity:", error);
+      }
+    },
     async calculateQuote(ethAmount) {
-      const swappedAmtOut = await this.Swapquote(ethAmount);
+      const swappedAmtOut = await this.swapQuote(ethAmount);
       if (typeof swappedAmtOut === 'undefined') {
         console.error('Failed to get swappedAmtOut');
         return;
       }
       console.log('swappedAmtOut: ', swappedAmtOut, ethAmount);
       const _totalLiquidity = await this.estimateAddLiquidity(swappedAmtOut, ethAmount);
-      console.log("swappedAmtOut: ", swappedAmtOut);
-      // quote = (_totalLiquidity * 4) + (swappedAmtOut * 8);
-      // The above is the logic from the miner to calculate the quote,
-      // we use this below after grabbing the above items through the uniswap/sdk
-      // then pass this back into AmountInput.vue through TokenInputCard.vue
-      // to attempt to allow the user to view the estimated rewards for mining
       const quote = (_totalLiquidity * 4) + (swappedAmtOut * 8);
+      console.log("Quote: ", quote);
       this.estimatedReward = quote;
     },
     abbreviateNumber(value) {
