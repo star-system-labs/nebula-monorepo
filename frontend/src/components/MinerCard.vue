@@ -78,20 +78,19 @@
 import ConnectWalletButton from './ConnectWalletButton.vue';
 import TokenInputCard from './TokenInputCard.vue';
 import MineButton from './MineButton.vue';
+import { Token, TokenAmount, Pair } from '@uniswap/sdk-core';
 import { ethers } from 'ethers';
-import QuoterABI from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
-import { Token, Fetcher, TokenAmount } from '@uniswap/sdk';
-
 import supplyPepe from '@/assets/supply-pepe.png';
 import supplyPond from '@/assets/supply-pond.png';
 
 const chainId = 1;
 const PEPE_ADDRESS = '0x6982508145454ce325ddbe47a25d4ec3d2311933';
-const PEPE = new Token(chainId, PEPE_ADDRESS, 18);0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+const PEPE = new Token(1, PEPE_ADDRESS, 18);
 console.log("!!!! MR. PEPE: ", PEPE.address);
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-const WETH = new Token(chainId, WETH_ADDRESS, 18);
+const WETH = new Token(1, WETH_ADDRESS, 18);
 console.log("!!!!WETH: ", WETH.address);
+//const pair = '0xA43fe16908251ee70EF74718545e4FE6C5cCEc9f';
 
 export default {
   components: {
@@ -139,81 +138,75 @@ export default {
   },
   methods: {
     async fetchPairData() {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const pair = await Fetcher.fetchPairData(PEPE, WETH[chainId], provider);
+      const infuraUrl = process.env.VUE_APP_INFURA_LINK;
+      const provider = new ethers.JsonRpcProvider(infuraUrl, undefined, {
+        staticNetwork: true
+      });
+      const pairAddress = '0xA43fe16908251ee70EF74718545e4FE6C5cCEc9f';
+      const pairAbi = [
+        'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
+        'function token0() external view returns (address)',
+        'function token1() external view returns (address)'
+      ];
+      const pairContract = new ethers.Contract(pairAddress, pairAbi, provider);
+
+      try {
+        const [reserve0, reserve1] = await pairContract.getReserves();
+        const token0Address = await pairContract.token0();
+        const token1Address = await pairContract.token1();
+        console.log("RESERVE0: ", reserve0, "RESERVE1: ", reserve1, "TOKEN0: ", token0Address, "TOKEN1: ", token1Address);
+        return { reserve0, reserve1, token0Address, token1Address };
+      } catch (error) {
+        console.error('Failed to fetch pair data:', error);
+        return null;
+      }
+    },
+    createPairFromData(pairData) {
+      const { reserve0, reserve1, token0Address, token1Address } = pairData;
+      const token0 = new Token(chainId, token0Address, 18);
+      const token1 = new Token(chainId, token1Address, 18);
+      const tokenAmount0 = new TokenAmount(token0, BigInt(reserve0.toString())); // eslint-disable-line no-undef
+      const tokenAmount1 = new TokenAmount(token1, BigInt(reserve1.toString())); // eslint-disable-line no-undef
+      const pair = new Pair(tokenAmount0, tokenAmount1);
+
       return pair;
     },
-    async estimatePEPEFromETH(ethAmount) {
-      if (!this.accountAddress) {
-        console.error("Account address is not set.");
-        return;
-      }
-      // Here we try to setup the data grab from the uniswap/sdk
-      //const wethAmount = new TokenAmount(WETH[chainId], ethAmount);
-      //console.log("wethAmount: ", wethAmount);
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      console.log("accountAddress: ", this.accountAddress);
-      const signer = await provider.getSigner(this.accountAddress);
+    async Swapquote(ethAmount) {
+      const infuraUrl = process.env.VUE_APP_INFURA_LINK;
+      const provider = new ethers.JsonRpcProvider(infuraUrl, undefined, {
+        staticNetwork: true
+      });
+      const routerAddress = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
+      console.log("Router Address: ", routerAddress.toLowerCase());
+      const checksummedRouterAddress = ethers.getAddress(routerAddress.toLowerCase());
+      console.log("Checksummed Router Address:", checksummedRouterAddress, "Vs", routerAddress);
 
-      const QUOTER_CONTRACT_ADDRESS = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6";
-      console.log("QUOTER_CONTRACT_ADDRESS: ", QUOTER_CONTRACT_ADDRESS);
-      const quoterContract = new ethers.Contract(QUOTER_CONTRACT_ADDRESS, QuoterABI.abi, signer);
-      if (!quoterContract) {
-        console.error("Quoter contract not instantiated");
-        return;
-      }
-      let tokenIn = WETH.address;
-      let tokenOut = PEPE.address;
-      let fee = 500;
-      console.log("fee: ", fee);
-      const amountInWei = ethers.parseUnits(ethAmount);
-      console.log("amountInWei: ", amountInWei);
-      if (!tokenIn || !tokenOut) {
-        console.error("Token addresses are not set.");
-        return;
-      }
-      console.log(`Calling quoteExactInputSingle with:
-        tokenIn: ${tokenIn},
-        tokenOut: ${tokenOut},
-        fee: ${fee.toString()},
-        amountInWei: ${amountInWei.toString()},
-        sqrtPriceLimitX96: 0`);
+      const routerAbi = [
+        "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)"
+      ];
+      const router = new ethers.Contract(checksummedRouterAddress, routerAbi, provider);
+
       try {
-        console.log("tokenIn address:", tokenIn);
-        console.log("tokenOut address:", tokenOut);
-        const quotedAmountOut = await quoterContract.quoteExactInputSingle(
-            tokenIn,
-            tokenOut,
-            fee,
-            amountInWei,
-            0
-        );
-        console.log(`Quoted Amount Out: ${ethers.formatUnits(quotedAmountOut, 'ether')}`);
-        return quotedAmountOut;
+        const pairData = await this.fetchPairData();
+        if (!pairData) {
+          console.error('Failed to fetch pair data');
+          return;
+        }
+
+      const path = [pairData.token1Address, pairData.token0Address];
+      const amountsIn = ethers.parseUnits(ethAmount.toString(), 'ether');
+      console.log("Amounts In: ", amountsIn);
+      
+      const amountsOut = await router.getAmountsOut(amountsIn, path);
+      const estimatedTokens = ethers.formatUnits(amountsOut[1], 'ether');
+      console.log("Estimated output tokens:", estimatedTokens, "For Token: ", pairData.token1Address, "For Pair: ", pairData);
+      return estimatedTokens;
       } catch (error) {
-        console.error('Error getting quote:', error);
+        console.error("Error getting swap estimate:", error);
       }
-    },
-    async estimateAddLiquidity(swappedAmtOut, ethAmount) {
-      // TODO update using quoter contract to retrieve quote for LP
-      // Lp estimate function here
-      const pair = await this.fetchPairData();
-      //const route = new Route([pair], WETH[chainId]);
-      const tokenAmount = new TokenAmount(PEPE, swappedAmtOut.toString());
-      const wethAmount = new TokenAmount(WETH[chainId], ethAmount.toString());
-
-      const totalSupply = pair.liquidityToken.totalSupply.raw;
-      const pepeReserve = pair.reserveOf(PEPE).raw;
-      const wethReserve = pair.reserveOf(WETH[chainId]).raw;
-
-      const pepeShare = tokenAmount.raw.divide(pepeReserve);
-      const wethShare = wethAmount.raw.divide(wethReserve);
-      const liquidityMinted = totalSupply.multiply(pepeShare.lessThan(wethShare) ? pepeShare : wethShare);
-
-        return liquidityMinted.toSignificant(6);
     },
     async calculateQuote(ethAmount) {
-      const swappedAmtOut = await this.estimatePEPEFromETH(ethAmount);
+      const swappedAmtOut = await this.Swapquote(ethAmount);
       if (typeof swappedAmtOut === 'undefined') {
         console.error('Failed to get swappedAmtOut');
         return;
