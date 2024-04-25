@@ -341,12 +341,12 @@ export default {
         params: [this.accountAddress, 'latest']
       });
       this.balance = this.formatBalance(formatEther(weiBalance));
-      console.log(`Updated Raw Balances: PPEPE: ${this.rawPpepeBalance}, PEPE: ${this.rawPepeBalance}, SHIB: ${this.rawShibBalance}`);
+      //console.log(`Updated Raw Balances: PPEPE: ${this.rawPpepeBalance}, PEPE: ${this.rawPepeBalance}, SHIB: ${this.rawShibBalance}`);
       
       if (this.currentContractAddresses.pepe) {
       const pepeContract = new Contract(this.currentContractAddresses.pepe, ERC20_ABI, provider);
       try {
-        console.log("Contract address:", this.currentContractAddresses.pepe);
+        //console.log("Contract address:", this.currentContractAddresses.pepe);
         const pepeTokenBalance = await pepeContract.balanceOf(this.accountAddress);
         this.rawPepeBalance = formatEther(pepeTokenBalance);
         this.pepeBalance = this.abbreviateNumber(this.rawPepeBalance);
