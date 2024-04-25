@@ -38,7 +38,6 @@ export default {
   computed: {
     inputValue: {
       get() {
-        // Attempt to allow the estimate to show if we designate the Input Field to not usable
         return this.isEditable ? this.amount : this.displayValue;
       },
       set(value) {
