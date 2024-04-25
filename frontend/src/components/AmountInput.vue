@@ -4,7 +4,7 @@
       type="text"
       placeholder="0"
       v-model="inputValue"
-      class="border-none  focus:outline-none bg-transparent w-full outline-none text-4xl text-yellow-300 overflow-hidden whitespace-nowrap text-overflow-ellipsis text-left placeholder-blue"
+      :class="['border-none focus:outline-none bg-transparent w-full outline-none text-4xl overflow-hidden whitespace-nowrap text-overflow-ellipsis text-left placeholder-blue', inputValue === '0' ? 'text-custom-blue' : 'text-yellow-300']"
       ref="amountInput"
       :disabled="!isEditable"
       @input="validateInput"
@@ -16,7 +16,6 @@
 export default {
   name: 'AmountInput',
   props: {
-    // Added the prop here
     displayValue: {
     type: String,
     default: ''
@@ -48,24 +47,32 @@ export default {
     }
   },
   methods: {
-  setAmount(value) {
-    this.amount = value;
-    this.emitInputValue();
-  },
-  emitInputValue() {
-    this.$emit('inputChanged', this.amount);
-  },
-  validateInput(event) {
-    const value = event.target.value;
-    const regex = /^[0-9]*\.?[0-9]*$/;
-    if (!regex.test(value)) {
-      this.amount = value.slice(0, -1);
-    } else {
+    setAmount(value) {
       this.amount = value;
+      this.emitInputValue();
+    },
+    emitInputValue() {
+      this.$emit('inputChanged', this.amount);
+    },
+    validateInput(event) {
+      const value = event.target.value;
+      const regex = /^[0-9]*\.?[0-9]*$/;
+      if (!regex.test(value)) {
+        this.amount = value.slice(0, -1);
+      } else {
+        this.amount = value;
+      }
+      this.emitInputValue();
     }
-    this.emitInputValue();
+  },
+  mounted() {
+    console.log('AmountInput mounted with displayValue:', this.displayValue);
+  },
+  watch: {
+    displayValue(newVal, oldVal) {
+      console.log(`displayValue changed in AmountInput from ${oldVal} to ${newVal}`);
+    }
   }
-}
 }
 </script>
 
