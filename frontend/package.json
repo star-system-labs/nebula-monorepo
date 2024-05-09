@@ -1,8 +1,9 @@
 {
   "name": "Nebula",
-  "version": "0.2.0",
+  "version": "0.1.5",
   "private": true,
   "scripts": {
+    "prod": "vue-cli-service build && serve -s dist",
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "build:css": "tailwindcss build src/tailwind.css -o src/assets/main.css",
@@ -19,7 +20,8 @@
     "epic-spinners": "^2.0.0",
     "ethers": "^6.11.1",
     "postcss-import": "^15.1.0",
-    "vue": "^3.2.13"
+    "vue": "^3.2.13",
+    "vue-i18n": "^10.0.0-alpha.3"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

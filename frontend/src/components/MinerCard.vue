@@ -17,7 +17,7 @@
     <TokenInputCard 
       class="w-[350px] mb-1 text-teal font-origin"
       currency="ETH"
-      label="You Supply:"
+      :label="$t('message.youstake')"
       :currencyLogo="require('@/assets/eth.png')"
       :balance="ethBalance"
       :isEditable="true"
@@ -38,7 +38,7 @@
         @click="toggleCopeSequence"
       >
     <span v-show="!showCopeSequence" class="w-full text-center text-xs my-xs-1 mx-1 text-yellow-300 sm:px-2.5 font-origin">
-      Mine PPePe
+      {{ $t('message.mineppepe') }}
     </span>
     <div v-show="showCopeSequence" class="flex gap-2.5 w-full justify-center items-center px-2.5">
       <img class="max-h-6 md:max-h-6 lg:max-h-8 w-auto" :src="require('@/assets/eth.png')" alt="ETH">
@@ -53,7 +53,7 @@
     <TokenInputCard 
       class="w-[350px] mb-4 text-teal font-origin"
       :currency="selectedToken"
-      label="You Mine:"
+      :label="$t('message.youmine')"
       :currencyLogo="getTokenLogo(selectedToken)"
       :balance="abbreviatedPpepeBalance"
       :isEditable="false"

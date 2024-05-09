@@ -4,7 +4,7 @@
       type="text"
       placeholder="0"
       v-model="inputValue"
-      :class="['border-none focus:outline-none bg-transparent w-full outline-none text-4xl overflow-hidden whitespace-nowrap text-overflow-ellipsis text-left placeholder-blue', inputValue === '0' ? 'text-custom-blue' : 'text-yellow-300']"
+      :class="inputValueClass"
       ref="amountInput"
       :disabled="!isEditable"
       @input="validateInput"
@@ -31,7 +31,7 @@ export default {
   },
   data() {
     return {
-      amount: ''
+      amount: '',
     };
   },
   computed: {
@@ -44,6 +44,13 @@ export default {
           this.amount = value;
         }
       }
+    },
+    inputValueClass() {
+      const isEmptyOrZero = this.inputValue === '' || this.inputValue === '0';
+      return [
+        'border-none focus:outline-none bg-transparent w-full outline-none text-4xl overflow-hidden whitespace-nowrap text-overflow-ellipsis text-left placeholder-blue',
+        isEmptyOrZero ? 'text-custom-blue' : 'text-yellow-300'
+      ];
     }
   },
   methods: {
@@ -71,6 +78,13 @@ export default {
   watch: {
     displayValue(newVal, oldVal) {
       console.log(`displayValue changed in AmountInput from ${oldVal} to ${newVal}`);
+    },
+    estimatedReward(newVal) {
+      if (parseFloat(newVal) === 0) {
+        this.inputValue = '';
+      } else {
+        this.inputValue = newVal;
+      }
     }
   }
 }

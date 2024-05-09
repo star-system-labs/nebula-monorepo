@@ -12,7 +12,7 @@
         }" 
         class="border-custom-blue w-full h-10 flex items-center justify-center px-2 sm:px-8 py-2 text-xs sm:text-base rounded-lg cursor-pointer transition-colors ease-in-out duration-300 hover:bg-button-hover active:bg-button-active"
       >
-        Mine
+        {{ $t('message.mine') }}
       </button>
       <button 
         @click="setSelectedCard('claim')" 
@@ -22,7 +22,7 @@
         }" 
         class="border-custom-blue w-full h-10 flex items-center justify-center px-2 sm:px-8 py-2 text-xs sm:text-base rounded-lg cursor-pointer transition-colors ease-in-out duration-300 hover:bg-button-hover active:bg-button-active"
       >
-        Claim
+        {{ $t('message.claim') }}
       </button>
       <button 
         @click="setSelectedCard('stake')" 
@@ -32,7 +32,7 @@
         }" 
         class="border-custom-blue w-full h-10 flex items-center justify-center px-2 sm:px-8 py-2 text-xs sm:text-base rounded-lg cursor-pointer transition-colors ease-in-out duration-300 hover:bg-button-hover active:bg-button-active"
       >
-        Earn
+        {{ $t('message.earn') }}
       </button>
     </div>
 
@@ -52,16 +52,18 @@
       <div v-if="selectedCard === 'claim'" class="w-full">
         <ClaimCard
             :accountAddress="accountAddress"
-            :ppepeBalance="ppepeBalance"
-            :pepeBalance="pepeBalance"
-            :shibBalance="shibBalance"
             :selectedToken="selectedToken"
             :setSelectedToken="setSelectedToken"
             :selectedTokenBalance="selectedTokenBalance"
             :rawPpepeBalance="rawPpepeBalance"
             :rawPepeBalance="rawPepeBalance"
-            :rawPndcBalance="rawPndcBalance"
             :rawShibBalance="rawShibBalance"
+            :ppepeBalance="ppepeBalance"
+            :pepeBalance="pepeBalance"
+            :shibBalance="shibBalance"
+            :pepelpBalance="pepelpBalance"
+            :shiblpBalance="shiblpBalance"
+            :ppepelpBalance="ppepelpBalance"
             :contract-addresses="currentContractAddresses"
             @connect="$emit('handleConnect')"
             />
@@ -73,16 +75,18 @@
         <StakeCard
             v-if="selectedCard === 'stake'"
             :accountAddress="accountAddress"
-            :ppepeBalance="ppepeBalance"
-            :pepeBalance="pepeBalance"
-            :shibBalance="shibBalance"
             :selectedToken="selectedToken"
             :setSelectedToken="setSelectedToken"
             :selectedTokenBalance="selectedTokenBalance"
             :rawPpepeBalance="rawPpepeBalance"
             :rawPepeBalance="rawPepeBalance"
-            :rawPndcBalance="rawPndcBalance"
             :rawShibBalance="rawShibBalance"
+            :ppepeBalance="ppepeBalance"
+            :pepeBalance="pepeBalance"
+            :shibBalance="shibBalance"
+            :pepelpBalance="pepelpBalance"
+            :shiblpBalance="shiblpBalance"
+            :ppepelpBalance="ppepelpBalance"
             :contract-addresses="currentContractAddresses"
             @connect="$emit('connect')"
             @updateBalances="handleUpdateBalances"
@@ -134,11 +138,19 @@
         type: String,
         default: "0.00"
       },
-      pondBalance: {
+      shibBalance: {
         type: String,
         default: "0.00"
       },
-      shibBalance: {
+      pepelpBalance: {
+        type: String,
+        default: "0.00"
+      },
+      shiblpBalance: {
+        type: String,
+        default: "0.00"
+      },
+      ppepelpBalance: {
         type: String,
         default: "0.00"
       },
@@ -172,13 +184,13 @@
         console.log('Current selectedCard:', this.selectedCard);
         switch (this.selectedCard) {
           case 'mine':
-            return 'Mine More, Earn More';
+            return this.$t('message.minemore');
           case 'stake':
-            return 'Meme More, Earn More';
+            return this.$t('message.mememore');
           case 'claim':
-            return 'Claim More, Earn More';
+            return this.$t('message.claimmore');
           default:
-            return 'Meme More, Earn More';
+            return this.$t('message.mememore');
         }
       }
     },

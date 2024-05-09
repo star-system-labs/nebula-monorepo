@@ -1,17 +1,17 @@
 <template>
   <div class="flex justify-center items-center">
     <button :disabled="insufficientFunds || enterAmount" @click="mine" class="mt-5 bg-gradient-to-r from-sky-600 to sky-900 hover:bg-button font-origin focus:outline-none focus:ring-2 focus:ring-blue-700 text-yellow-300 px-6 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors focus:outline-none">
-      <SpinnerSVG v-if="loading" />
-      <span v-else-if="insufficientFunds">Insufficient Funds</span>
-      <span v-else-if="enterAmount">Enter Amount</span>
-      <span v-else>Mine</span>
+      <orbit-spinner v-if="loading" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
+      <span v-else-if="insufficientFunds">{{ $t('message.insufficientfunds') }}</span>
+      <span v-else-if="enterAmount">{{ $t('message.enteramount') }}</span>
+      <span v-else>{{ $t('message.mine') }}</span>
     </button>
   </div>
 </template>
 
 <script>
 import MiningRigABI from '../ABI/MiningRigABI.json'
-import SpinnerSVG from './SpinnerSVG.vue';
+import { OrbitSpinner } from 'epic-spinners';
 import { ethers } from "ethers";
 let provider;
 // eslint-disable-next-line no-unused-vars
@@ -19,7 +19,7 @@ let contract;
 
 export default {
   components: {
-    SpinnerSVG
+    OrbitSpinner
   },
   data() {
     return {
@@ -87,33 +87,28 @@ export default {
       amountOutMinUniswap: amountOutMinUniswap,
     });
     
+    this.$root.$refs.notificationCard.showNotification("pending", "Transaction pending...");
     const tx = await contract.mineLiquidity(amountOutMinUniswap, {
       value: ethers.parseEther(this.enteredAmount.toString()),
       from: account,
     });
     
+    this.$root.$refs.notificationCard.showNotification("pending", "Transaction pending...");
     const receipt = await tx.wait();
 
     if (receipt.status === 0) {
-      this.$root.$refs.notificationCard.showNotification("error");
+      this.$root.$refs.notificationCard.showNotification("error", "Mining failed.");
     } else if (receipt.status === 1) {
-      const minedEvent = receipt.events?.find(e => e.event === "PPEPE Mined Bruh");
-      const quoteValue = minedEvent.args.quote;
       this.$emit('mined');
-      this.$emit('quoteObtained', quoteValue.toString());
-      this.$root.$refs.notificationCard.showNotification("success");
+      this.$root.$refs.notificationCard.showNotification("success", "PPePe Mined Bruh!");
     }
   } catch (error) {
-    if (error.code === 9001) {
-      console.error('Transaction was rejected by the user, and its over 9000');
-    } else {
-      console.error('Mining failed: Its over 9000, ', error.message || error);
-      this.$root.$refs.notificationCard.showNotification("error");
-    }
+    console.error('Mining failed: ', error.message || error);
+    this.$root.$refs.notificationCard.showNotification("error", "Mining failed: " + (error.message || error));
   } finally {
     this.loading = false;
-   }
   }
- }
+}
+  }
 };
 </script>

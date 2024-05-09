@@ -15,19 +15,19 @@
       </div>
     </div>
     <div class="flex items-center text-xxs sm:text-xs md:text-sm lg:text-base xl:text-lg justify-end w-full" v-if="accountAddress">
-      <div class="text-yellow-300 flex-shrink-0">Balance:</div>
+      <div class="text-yellow-300 flex-shrink-0">{{ $t('message.balance') }}:</div>
       <div class="text-yellow-300 ml-1 flex-shrink-0">{{ balance }}</div>
       <button
       v-if="isMaxSelectable"
       @click="handleMaxClicked"
       class="ml-1 sm:ml-2 md:ml-4 lg:ml-6 xl:ml-8 bg-transparent border-none cursor-pointer px-2 py-1 text-slate-300 hover:text-yellow-300 focus:outline-none transition-colors">
-      Max
+      {{ $t('message.max') }}
     </button>
     <button 
       v-else 
       class="ml-1 sm:ml-2 md:ml-4 lg:ml-6 xl:ml-8 bg-transparent border-none cursor-not-allowed px-2 py-1 text-slate-300 opacity-50"
       disabled>
-        Max
+        {{ $t('message.max') }}
     </button>
     </div>
   </div>
@@ -57,10 +57,6 @@ export default {
       default: null
     },
     isEditable: {
-      type: Boolean,
-      default: true
-    },
-    isMaxSelectable: {
       type: Boolean,
       default: true
     },
@@ -95,19 +91,23 @@ export default {
   },
   computed: {
     correctBalance() {
+      console.log('LP Token Balances:', this.lpTokenBalances);
       if (this.isLPStaking) {
         const keyMapping = {
-          'ppepe': 'PrimordialPePeLP',
-          'pepe': 'PePeLP',
-          'shib': 'ShibLP',
+          'ppepe': 'ppepelp',
+          'pepe': 'pepelp',
+          'shib': 'shiblp',
         };
         const normalizedCurrency = this.currency.toLowerCase();
         const mappedKey = keyMapping[normalizedCurrency] || normalizedCurrency;
         const balance = this.lpTokenBalances[mappedKey] || '0';
-        console.log(`LP Balance for ${normalizedCurrency} (${mappedKey}):`, balance);
+        console.log(`LP Balance Mapped Key: ${mappedKey}, LP Balance: ${balance}`);
         return balance;
       }
       return this.isToken ? this.rawBalance : this.balance;
+    },
+    isMaxSelectable() {
+      return parseFloat(this.correctBalance) > 0;
     },
   },
   methods: {
@@ -116,15 +116,11 @@ export default {
       this.$emit('amountChanged', value);
     },
     handleMaxClicked() {
-      let maxAmount = parseFloat(this.correctBalance);
-      if (Number.isInteger(maxAmount)) {
-        maxAmount = maxAmount.toString(); 
-      } else {
-        maxAmount = maxAmount.toFixed(2); 
-      }
+      console.log('Correct balance before parsing:', this.correctBalance);
+      let maxAmount = parseFloat(this.correctBalance).toFixed(2);
+      console.log('Parsed maxAmount:', maxAmount);
       this.$refs.amountInput.setAmount(maxAmount);
       this.emitAmount(maxAmount);
-      console.log('Max clicked, maxAmount:', this.correctBalance);
     },
   },
   watch: {
