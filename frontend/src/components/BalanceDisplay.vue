@@ -1,6 +1,7 @@
 <template>
   <div class="flex items-center">
-    {{ tokenName ? `${tokenName} Token ` : '' }}Balance: 
+    {{ tokenName ? `${tokenName} Token ` : '' }}
+    {{ $t('message.balance') }}
     <transition :name="transitionName" mode="out-in">
       <div :key="displayBalance" class="inline-block">
         {{ displayBalance }}

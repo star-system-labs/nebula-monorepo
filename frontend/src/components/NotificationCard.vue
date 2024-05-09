@@ -24,19 +24,39 @@
       };
     },
     methods: {
-      showNotification(type) {
+      showNotification(type, customMessage) {
         if (this.timer) {
             clearInterval(this.timer);
             this.progress = 100;
         }
-        if (type === "success") {
-          this.message = "PrimordialPePe Mined!";
-          this.image = require("@/assets/ppepe.png");
-        } else {
-          this.message = "Failed Transaction";
-          this.image = require("@/assets/error.png");
+        switch (type) {
+          case "success":
+            this.message = customMessage || "PrimordialPePe Mined!";
+            this.image = require("@/assets/ppepe.png");
+            break;
+          case "error":
+            this.message = customMessage || "Failed Transaction";
+            this.image = require("@/assets/error.png");
+            break;
+          case "pending":
+            this.message = customMessage || "Transaction Pending...";
+            this.image = require("@/assets/history.png");
+            break;
+          case "LPStakingSuccess":
+            this.message = customMessage || "LP Staking Successful!";
+            this.image = require("@/assets/staking.png");
+            break;
+          case "VestingSuccess":
+            this.message = customMessage || "Vesting Successful!";
+            this.image = require("@/assets/vesting.png");
+            break;
+          case "SDIVComingSoon":
+            this.message = "SDIV is coming soon!";
+            this.image = require("@/assets/sdiv.png");
+            break;
         }
         this.show = true;
+        const intervalDuration = type === "pending" ? 100 : 35;
         this.timer = setInterval(() => {
           if (this.progress <= 0) {
             clearInterval(this.timer);
@@ -44,7 +64,7 @@
           } else {
             this.progress -= 1;
           }
-        }, 35);
+        }, intervalDuration);
       }
     },
     beforeUnmount() {

@@ -9,13 +9,13 @@
          class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs md:text-sm lg:text-lg"
          :class="selectedOption === 'Staking' ? 'text-yellow-300' : 'text-custom-blue-inactive'"
          @click="setSelectedOption('Staking')">
-         LP Staking
+         {{ $t('message.lpstaking') }}
        </div>
        <div 
          class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs md:text-sm lg:text-lg"
          :class="selectedOption === 'Vesting' ? 'text-yellow-300' : 'text-custom-blue-inactive'"
          @click="setSelectedOption('Vesting')">
-         Vesting
+         {{ $t('message.vesting') }}
        </div>
      </div>
      <div class="currency-toggle flex cursor-pointer mb-4 rounded-xl overflow-hidden border-2 border-custom-blue shadow-md relative">
@@ -32,25 +32,26 @@
      </div>
     </div>
 
-    <div v-if="selectedOption === 'Staking'" class="staking-rewards-container flex flex-col items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto mb-4">
+    <div v-if="selectedOption === 'Staking'" class="staking-rewards-container flex flex-col justify-center items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto mb-4">
       <div v-if="stakes.length > 0" class="w-full max-w-sm mx-auto md:max-w-md lg:max-w-lg">
-        <p class="font-origin text-yellow-300">LP Staking Slots</p>
+        <p class="font-origin text-yellow-300">{{ $t('message.lpstakingslot') }}</p>
         <div :class="{ 'grid grid-cols-1 md:grid-cols-2 gap-4 justify-start': stakes.length > 1 }">
-          <div v-for="(stake, index) in stakes" :key="index"
-               class="mb-4 w-full md:w-1/2 max-w-md cursor-pointer relative"
-               @click="selectStakingSlot(index)"
-               :class="{
-                 'flex justify-between items-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-900 focus:border-green-500 transition-colors duration-300': true,
-                 'border-2 border-custom-blue': selectedStakeIndex !== index,
-                 'border-2 border-green-500': selectedStakeIndex === index,
-                 'last:mr-0': index % 2 === 0,
-               }">
+          <div v-for="(stake, index) in stakes" :key="`stake-${selectedToken}-${index}`"
+              class="mb-4 last:mb-0 w-full max-w-full mx-auto cursor-pointer items-center relative" 
+              @click="selectStakingSlot(index)"
+              :class="{
+               'md:col-span-2 md:flex md:flex-col md:justify-center md:items-center md:text-center': [1, 3].includes(stakes.length) && index === stakes.length - 1,
+               'flex justify-center items-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-900 focus:border-green-500 transition-colors duration-300': true,
+               'border-2 border-custom-blue': selectedStakeIndex !== index,
+               'border-2 border-green-500': selectedStakeIndex === index,
+               'last:mr-0': index % 2 === 0,
+              }">
             <div>
-              <div class="text-left">
-                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Primordial&nbsp;Emission:&nbsp;{{ primordialEmission }}</p>
-                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Amount: {{ ethers.formatEther(stake.amount) }}</p>
-                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Start Time: {{ formattedDate }}</p>
-                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Rewards Owed: {{ stake.rewardsOwed }}</p>
+              <div class="md:text-left md:justify-center sm:justify-center sm:text-center sm:w-full" :class="{'md:text-center': [1, 3].includes(stakes.length) && index === stakes.length - 1}">
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.primordialemis') }}&nbsp;{{ primordialEmission }}</p>
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.amount') }}: {{ ethers.formatEther(stake.amount) }}</p>
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.starttime') }}: {{ formattedDate }}</p>
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.rewardsowed') }}: {{ stake.rewardsOwed }}</p>
               </div>
               <div v-if="selectedStakeIndex === index" class="absolute top-0 right-0 p-1">
                 <img src="@/assets/check.png" alt="Selected" class="w-4 h-4">
@@ -59,31 +60,40 @@
           </div>
         </div>
       </div>
+      <p v-if="showError" class="text-red-500 font-origin mt-4">{{ $t('message.pleaseselect') }}</p> 
       <div v-else class="font-origin text-yellow-300">
-        No Active Staking Slots
+        <div v-if="selectedToken === 'PPePe'">
+            {{ $t('message.sdivrewardscomingsoon') }}
+          </div>
+          <div v-else>
+            <div v-if="stakes.length === 0">
+              {{ $t('message.nostakingslots') }}
+            </div>
+          </div>
       </div>
     </div>
 
-    <div v-if="selectedOption === 'Vesting'" class="flex flex-col items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto mb-4">
+    <div v-if="selectedOption === 'Vesting'" class="flex flex-col justify-center items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto mb-4">
       <div v-if="vests && vests.length" class="w-full max-w-sm mx-auto md:max-w-md lg:max-w-lg">
-        <p class="font-origin text-yellow-300">Vesting Slots</p>          
+        <p class="font-origin text-yellow-300">{{ $t('message.vestingslots') }}</p>          
           <div :class="{ 'grid grid-cols-1 md:grid-cols-2 gap-4 justify-start': vests.length > 1 }">
           <div v-for="(vest, index) in vests" :key="index" 
-            class="mb-4 w-full md:w-1/2 max-w-md cursor-pointer relative" 
+            class="mb-4 last:mb-4 w-full max-w-full mx-auto cursor-pointer relative" 
             @click="selectVestSlot(index)"
             :class="{
-              'flex justify-between items-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-900 focus:border-green-500 transition-colors duration-300': true,
+              'md:col-span-2 md:flex md:flex-col md:justify-center md:items-center md:text-center': [1, 3, 5, 7, 9, 11].includes(vests.length) && index === vests.length - 1,
+              'flex justify-center items-center text-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-9000 focus:border-green-500 transition-colors duration-300': true,
               'border-2 border-custom-blue': selectedVestIndex !== index,
               'border-2 border-green-500': selectedVestIndex === index,
               'last:mr-0': index % 2 === 0,
             }">
           <div>
-            <div class="text-left">
-              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Amount: {{ abbreviateNumber(ethers.formatEther(vest.amount)) || 'Calculating...' }}</p>
-              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Locked: {{ lockedTimes[index] || 'Calculating...' }}</p>
-              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Remaining: {{ calculateTimeLeft(vest.endTime) || 'Calculating...' }}</p>
-              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">APR: {{ (vest.apr)+'%' || 'Calculating...' }}</p>
-              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">Est. Rewards: {{ abbreviateNumber(calculateEstimatedRewards(vest)) || 'Calculating...' }}</p>
+            <div class="md:text-left md:justify-center sm:justify-center sm:text-center sm:w-full" :class="{'text-center md:text-center': [1, 3, 5, 7, 9, 11].includes(vests.length) && index === vests.length - 1}">
+              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.amount') }}: {{ abbreviateNumber(ethers.formatEther(vest.amount)) || $t('message.calculating') }}</p>
+              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.locked') }}: {{ lockedTimes[index] || $t('message.calculating') }}</p>
+              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.remaining') }}: {{ calculateTimeLeft(vest.endTime) || $t('message.calculating') }}</p>
+              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.apr') }}: {{ (vest.apr)+'%' || $t('message.calculating') }}</p>
+              <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.estimatedrewards') }}: {{ abbreviateNumber(calculateEstimatedRewards(vest)) || $t('message.calculating') }}</p>
             </div>
             <div v-if="selectedVestIndex === index" class="absolute top-0 right-0 p-1">
               <img src="@/assets/check.png" alt="Selected" class="w-4 h-4">
@@ -92,31 +102,41 @@
           </div>
         </div>
       </div>
+      <p v-if="showError" class="text-red-500 font-origin mt-4">{{ $t('message.pleaseselect') }}</p>
       <div v-else class="font-origin text-yellow-300">
-        No active vesting slots found
+        <div v-if="vests.length === 0">
+          {{ $t('message.novestingslots') }}
+        </div>
       </div>
     </div>
 
      <div class="mb-6">
      <ConnectWalletButton v-if="!accountAddress" @connect="$emit('handleConnect')" class="w-full mb-6"/>
-     <div v-if="accountAddress && selectedOption === 'Staking'" class="flex justify-between w-full">
-       <button @click="handleUnstakeClick" :disabled="loadingUnstake" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mr-5 text-xs md:text-sm lg:text-lg">
-        <orbit-spinner v-if="loadingUnstake" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
-        <span v-else>Unstake LP</span>
-      </button>
-      <button @click="handleClaimClick" :disabled="loadingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 text-xs md:text-sm lg:text-lg">
-        <orbit-spinner v-if="loadingClaim" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
-            <span v-else>Claim</span>
+     <div v-if="accountAddress && selectedOption === 'Staking'">
+       <div v-if="selectedToken === 'PPePe'">
+         <button @click="sdivComingSoon" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mr-5 text-xs md:text-sm lg:text-lg">
+           {{ $t('message.sdivcomingsoon') }}
+         </button>
+       </div>
+       <div v-else>
+         <button @click="handleUnstakeClick" :disabled="loadingUnstake" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mr-5 text-xs md:text-sm lg:text-lg">
+          <orbit-spinner v-if="loadingUnstake" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
+          <span v-else>{{ $t('message.unstakelp') }}</span>
         </button>
-        </div>
+        <button @click="handleClaimClick" :disabled="loadingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 text-xs md:text-sm lg:text-lg">
+          <orbit-spinner v-if="loadingClaim" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
+          <span v-else>{{ $t('message.claim') }}</span>
+        </button>
+       </div>
+      </div>
       <div v-if="accountAddress && selectedOption === 'Vesting'" class="flex justify-between w-full">
         <button @click="handleEmergencyWithdrawClick" :disabled="loadingEmergencyWithdraw" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mr-5 text-xs md:text-sm lg:text-lg">
           <orbit-spinner v-if="loadingEmergencyWithdraw" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
-          <span v-else>Emergency Withdraw</span>
+          <span v-else>{{ $t('message.emergencywithdraw') }}</span>
         </button>
         <button @click="handleVestingClaimClick" :disabled="loadingVestingClaim" class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 text-xs md:text-sm lg:text-lg">
           <orbit-spinner v-if="loadingVestingClaim" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
-          <span v-else>Claim</span>
+          <span v-else>{{ $t('message.claim') }}</span>
         </button>
       </div>
     </div>
@@ -153,6 +173,7 @@
    },
    data() {
      return {
+       isPPEPESelected: false,
        selectedVestIndex: null,
        selectedStakeIndex: null,
        lockedTimes: {},
@@ -185,7 +206,7 @@
        contractAddresses: {
         mainnet: {
           staking: {
-           PPePe: '0xe80d3A916331F6937Ee7174c26096a7b76BA441B',
+           PPePe: '0x0000000000000000000000000000000000000000',
            PePe: '0x8CCFd0d157eff755b70Ed68F4206Db4E2dF9A0FA',
            Shib: '0x63589B3be51D403e265fE69dB2b93Ea33ac7D614',
           },
@@ -200,14 +221,14 @@
            shib: '0xfD1450a131599ff34f3Be1775D8c8Bf79E353D8c',
           },
           lptokens: {
-           PrimordialPePeLP: '0xE763297d736b73d7e37809513B7399D1F66443Ed',
-           PePeLP: '0xB08eAC861c0FD07e74c3Bc6FBABe309e1F82afE5',
-           ShibLP: '0x5e29a016b9d79ef38Cc66B3E58A08af80b26FB91',
+           PrimordialPePeLP: '0x45a8d3a8bfa5b1ec496508d738f5b9e3bd2cb86d',
+           PePeLP: '0xa43fe16908251ee70ef74718545e4fe6c5ccec9f',
+           ShibLP: '0xbef860db27fc2f9668d13d624563d859c65a2b25',
           }
         },
         sepolia: {
           staking: {
-           PPePe: '0x00',
+           PPePe: '0x0000000000000000000000000000000000000000',
            PePe: '0x6F295069d4F66D53DCC5a5dD2354199Cf55F2B66',
            Shib: '0x533Bf6eA7868abC6C78D73E60EB795Cb5FCa14C1',
           },
@@ -246,9 +267,13 @@
        walletBalanceData: '0.00',
        selectedOption: 'Staking',
        selectedSlot: 0, 
+       showError: false,
      };
    },
    methods: {
+     isValidAddress(address) {
+      return address && address !== '0x0000000000000000000000000000000000000000';
+     },
      handleConnect() {
       this.$emit('connect');
      },
@@ -256,14 +281,25 @@
       this.vests = [...newVests];
      },
      selectStakingSlot(index) {
-      this.selectedStakeIndex = index;
-      console.log("Selected Stake!!!!!!",this.selectedStakeIndex)
-      //this.$forceUpdate();
-     },
+        if (this.selectedStakeIndex === index) {
+          this.selectedStakeIndex = null;
+          this.showError = false;
+        } else {
+          this.selectedStakeIndex = index;
+          this.showError = false;
+        }
+      },
      selectVestSlot(index) {
-      this.selectedVestIndex = index;
-      console.log("Selected Vest!!!!!!",this.selectedVestIndex)
-      //this.$forceUpdate();
+      if (this.selectedVestIndex === index) {
+        this.selectedVestIndex = null;
+        this.showError = false;
+      } else {
+        this.selectedVestIndex = index;
+        this.showError = false;
+      }
+     },
+     sdivComingSoon() {
+      this.$root.$refs.notificationCard.showNotification("SDIVComingSoon");
      },
      calculateEstimatedRewards(vest) {
       const ethers = require('ethers');
@@ -313,13 +349,17 @@
       const network = await provider.getNetwork();
       console.log(`Current network: ${network.name}`);
       const stakingContractAddress = this.contractAddresses[network.name].staking[this.selectedToken];
+      if (!this.isValidAddress(stakingContractAddress)) {
+        console.log("Staking contract address is invalid or not deployed yet:", stakingContractAddress);
+        return;
+      }
       console.log(`Using staking contract address: ${stakingContractAddress}`);
       const stakingContract = new ethers.Contract(stakingContractAddress, LPStakingABI, provider);
 
       try {
         const [slotsAvailability, stakes] = await stakingContract.getAllSlots(this.accountAddress);
         const stakesWithRewards = await Promise.all(stakes.map(async (stake, index) => {
-          if (slotsAvailability[index] === false) { // Assuming false indicates an occupied slot
+          if (slotsAvailability[index] === false) {
             const rewardsOwedWei = await stakingContract.getBasePrimordialOwed(stake.amount, this.accountAddress, index);
             const rewardsOwed = parseFloat(ethers.formatEther(rewardsOwedWei)).toFixed(4);
             return {
@@ -395,12 +435,19 @@
 
         const provider = new ethers.BrowserProvider(window.ethereum);
         const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
+        if (!this.isValidAddress(contractAddress)) {
+          console.log("Primordial Emission contract address is invalid or not deployed yet:", contractAddress);
+          return;
+        }
         const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
-        const emission = await contract.getPrimordialEmission(this.accountAddress, this.selectedSlot); // Updated to include slot parameter
+        const emission = await contract.getPrimordialEmission(this.accountAddress, this.selectedSlot);
         console.log("Primordial Emission:", emission);
         this.primordialEmission = emission;
       } catch (error) {
         console.error("Error fetching Primordial Emission:", error);
+        if (error.code === -32000) {
+          console.error("Execution reverted by the EVM. Check contract conditions and inputs.");
+        }
       }
      },
      async fetchStakingInfo() {
@@ -412,6 +459,10 @@
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
+      if (!this.isValidAddress(contractAddress)) {
+        console.log("Staking contract address is invalid or not deployed yet:", contractAddress);
+        return;
+      }
       const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
       const slot = Number(this.selectedSlot);
       const stakerInfo = await contract.getStakerInfo(this.accountAddress, slot);
@@ -461,39 +512,55 @@
        }
      },
      async fetchTokenBalances() {
-       if (!this.accountAddress) {
-         console.log("No account address provided.");
-         return;
-       }
-       try{
-       const provider = new ethers.BrowserProvider(window.ethereum);
-       for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].tokens)) {
-         const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
-         const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
-         const balanceInEther = ethers.formatEther(balanceInWei);
-         const balance = await tokenContract.balanceOf(this.accountAddress);
-         console.log("Token Balance:", balance.toString());
-         this.tokenBalances[tokenName] = balanceInEther;
-         console.log(`${tokenName} (${tokenAddress}) balance:`, this.tokenBalances[tokenName]);
-       }
+      if (!this.accountAddress) {
+        console.log("No account address provided.");
+        return;
+      }
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.ready;
+        const addresses = this.contractAddresses[this.currentNetwork].tokens;
+        for (const [tokenName, tokenAddress] of Object.entries(addresses)) {
+          const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
+          try {
+            const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
+            if (!balanceInWei || balanceInWei === '0x') {
+              console.log(`${tokenName} at ${tokenAddress} has no balance data or is not correctly set.`);
+              continue;
+            }
+            const balanceInEther = ethers.formatEther(balanceInWei);
+            this.tokenBalances[tokenName] = balanceInEther;
+            console.log(`${tokenName} (${tokenAddress}) balance:`, this.tokenBalances[tokenName]);
+          } catch (innerError) {
+            console.error(`Error fetching balance for ${tokenName} at ${tokenAddress}:`, innerError);
+          }
+        }
       } catch (error) {
         console.error("Error fetching token balances:", error);
-       }
+      }
      },
      async fetchLPTokenBalances() {
        if (!this.accountAddress) {
          console.log("No account address provided.");
          return;
        }
- 
        const provider = new ethers.BrowserProvider(window.ethereum);
+       console.log("Current Network: ", this.currentNetwork);
        for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].lptokens)) {
-         const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
-         const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
-         const balanceInEther = ethers.formatEther(balanceInWei);
-         this.lpTokenBalances[tokenName] = balanceInEther;
-         console.log(`${tokenName} (${tokenAddress}) balance:`, this.lpTokenBalances[tokenName]);
-         
+         try {
+           const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
+           console.log("Token Contract Address:", tokenContract);
+           const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
+           if (!balanceInWei || balanceInWei === '0x') {
+             console.log(`${tokenName} at ${tokenAddress} has no balance data or is not correctly deployed.`);
+             continue;
+           }
+           const balanceInEther = ethers.formatEther(balanceInWei);
+           this.lpTokenBalances[tokenName] = balanceInEther;
+           console.log(`${tokenName} (${tokenAddress}) balance:`, this.lpTokenBalances[tokenName]);
+         } catch (error) {
+           console.error(`Error fetching balance for ${tokenName} at ${tokenAddress}:`, error);
+         }
        }
      },
      adjustVestingPeriod() {
@@ -516,6 +583,9 @@
      },
      setSelectedCurrency(currency) {
        this.selectedToken = currency;
+       this.selectedStakeIndex = null;
+       this.selectedVestIndex = null;
+       this.showError = false;
        this.selectedTokenBalance;
      },
      handleAmountChanged(value) {
@@ -526,27 +596,34 @@
      async detectNetwork() {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const network = await provider.getNetwork();
-      const newNetwork = network.chainId === 1 ? 'mainnet' : 'sepolia';
-      if (this.currentNetwork !== newNetwork) {
-        this.currentNetwork = newNetwork;
-        console.log(`Detected and set current network to: ${this.currentNetwork}`);
-        this.$emit('networkChanged', this.currentNetwork);
-      }
+      this.currentNetwork = network.chainId === 1 ? 'mainnet' : 'sepolia';
+      console.log("Current Network: ", this.currentNetwork);
      },
      async handleUnstakeClick() {
       try {
+        if (this.selectedStakeIndex === null) {
+          this.showError = true;
+          this.$root.$refs.notificationCard.showNotification("error", "Please select a slot to unstake.");
+          return;
+        }
+        this.showError = false;
         this.loadingUnstake = true;
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
+        console.log("Unstake Contract Address: ", contractAddress);
         const contract = new ethers.Contract(contractAddress, LPStakingABI, signer);
 
         const stakedAmount = ethers.parseUnits(this.stakedAmountWei, 18);
-        const tx = await contract.unstakeLPToken(stakedAmount);
+        const slot = this.selectedStakeIndex;
+        console.log("Claim Click slot", slot);
+        const tx = await contract.claimReward(stakedAmount, slot);
         await tx.wait();
 
         this.loadingUnstake = false;
-        // Refresh the balance?
+        this.fetchLPTokenBalances();
+        this.fetchStakingSlots();
+        //this.fetchTokenBalances();
       } catch (error) {
         this.loadingUnstake = false;
         console.error("Error during unstake:", error);
@@ -554,28 +631,31 @@
      },
      async handleClaimClick() {
       try {
+        if (this.selectedStakeIndex === null) {
+          this.showError = true;
+          this.$root.$refs.notificationCard.showNotification("error", "Please select a slot to claim.");
+          return;
+        }
+        this.showError = false;
         this.loadingClaim = true;
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
-
         const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
-        if (!contractAddress) {
-          console.error('Contract address is undefined');
-          this.loadingClaim = false;
-          return;
-        }
+        console.log("Claim Contract Address: ", contractAddress);
 
         const contract = new ethers.Contract(contractAddress, LPStakingABI, signer);
+        console.log("Loaded ABI: ", LPStakingABI);
 
         const stakedAmount = ethers.parseUnits(this.stakedAmountWei, 18);
-
-        console.log("CalimClick stakedAmount", stakedAmount);
-
-        const tx = await contract.claimReward(stakedAmount);
+        console.log("Claim Click stakedAmount", stakedAmount);
+        const slot = this.selectedStakeIndex;
+        console.log("Claim Click slot", slot);
+        const tx = await contract.claimReward(stakedAmount, slot);
         await tx.wait();
 
         this.loadingClaim = false;
-        // Refresh balance?
+        this.fetchLPTokenBalances();
+        this.fetchStakingSlots();
       } catch (error) {
         this.loadingClaim = false;
         console.error("Error during claim:", error);
@@ -583,6 +663,12 @@
      },
      async handleEmergencyWithdrawClick() {
       try {
+        if (this.selectedVestIndex === null) {
+          this.showError = true;
+          this.$root.$refs.notificationCard.showNotification("error", "Please select a slot to claim.");
+          return;
+        }
+        this.showError = false;
         this.loadingEmergencyWithdraw = true;
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
@@ -593,7 +679,8 @@
         await tx.wait();
 
         this.loadingEmergencyWithdraw = false;
-        // Refresh the balance?
+        this.fetchTokenBalances();
+        this.fetchVestingSlots();
       } catch (error) {
         this.loadingEmergencyWithdraw = false;
         console.error("Error during emergency withdraw:", error);
@@ -601,6 +688,12 @@
      },
      async handleVestingClaimClick() {
       try {
+        if (this.selectedVestIndex === null) {
+          this.showError = true;
+          this.$root.$refs.notificationCard.showNotification("error", "Please select a slot to claim.");
+          return;
+        }
+        this.showError = false;
         this.loadingVestingClaim = true;
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
@@ -611,7 +704,7 @@
         await tx.wait();
 
         this.loadingVestingClaim = false;
-        // Refresh balance?
+        this.fetchTokenBalances();
       } catch (error) {
         this.loadingVestingClaim = false;
         console.error("Error during vesting claim:", error);
@@ -624,7 +717,6 @@
           return;
         }
 
-        // Check if the selected option is 'Staking' and if a slot is selected
         if (this.selectedOption === 'Staking' && this.selectedSlot === null) {
           console.error('No slot selected for staking');
           return;
@@ -644,7 +736,7 @@
           contractABI = VestingABI;
           contractMethod = 'vestTokens';
           if (this.vestingPeriod === 365) {
-            timeIndex = 11; // Directly set to 11 for 12 months, as indices are 0-based
+            timeIndex = 11; 
           } else {
             timeIndex = Math.round(this.vestingPeriod / 30) - 1;
           }
@@ -712,7 +804,7 @@
          return "12 months 365 days";
        }
        const months = Math.floor(this.vestingPeriod / 30);
-       const days = this.vestingPeriod;
+       const days = this.vestingPeriod;// % 30;
        let monthString = months === 1 ? "month" : "months";
        let dayString = days === 1 ? "day" : "days";
        let formattedString = `${months} ${monthString} / ${days} ${dayString}`;
@@ -750,14 +842,13 @@
              console.log("PePe Balance: ", this.pepeBalance);
              balance = this.pepeBalance;
              break;
-         case 'Shib':
-           console.log("Shib Balance: ", this.shibBalance);
-           balance = this.shibBalance;
-           break;
+           case 'Shib':
+             console.log("Shib Balance: ", this.shibBalance);
+             balance = this.shibBalance;
+             break;
          }
        }
        console.log(`${this.selectedToken} Balance: `, balance);
- 
        return this.abbreviateNumber(balance);
      },
      toggleStyle() {
@@ -798,8 +889,14 @@
          this.fetchPrimordialEmission();
        }
      },
-     selectedToken(newVal, oldVal) {
+     selectedToken(newVal, oldVal, newToken, oldToken) {
+      if (newToken !== oldToken) {
+        this.stakes = [];
+        this.fetchStakingSlots();
+        this.fetchVestingSlots();
+      }
       if (newVal !== oldVal) {
+        this.isPPEPESelected = newVal === 'PPEPE';
         this.fetchStakingInfo();
         this.fetchPrimordialEmission();
         this.fetchVestingSlots();
