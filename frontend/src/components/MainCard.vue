@@ -45,7 +45,7 @@
         @amountChanged="handleAmountChanged" 
         @connect="$emit('connect')" 
       />
-      <div class="mt-4 text-yellow-300 font-origin font-semibold text-xl sm:text-xs">
+      <div class="mt-4 text-yellow-300 font-origin font-semibold md:text-md lg:text-lg">
         {{ displayMessage }}
       </div>
       </div>
@@ -67,7 +67,7 @@
             :contract-addresses="currentContractAddresses"
             @connect="$emit('handleConnect')"
             />
-            <div class="mt-4 text-yellow-300 font-origin font-semibold text-xl sm:text-xs">
+            <div class="mt-4 text-yellow-300 font-origin font-semibold md:text-md lg:text-lg">
         {{ displayMessage }}
       </div>
       </div>
@@ -91,7 +91,7 @@
             @connect="$emit('connect')"
             @updateBalances="handleUpdateBalances"
             />
-            <div class="mt-4 text-yellow-300 font-origin font-semibold text-xl sm:text-xs">
+            <div class="mt-4 text-yellow-300 font-origin font-semibold md:text-md lg:text-lg">
         {{ displayMessage }}
       </div>
     </div>
