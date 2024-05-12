@@ -43,6 +43,7 @@
        :currency="selectedToken"
        :balance="selectedTokenBalance"
        :label="stakeLabel"
+       :labelClass="'text-xs md:text-sm lg:text-md'"
        :currencyLogo="selectedCurrencyLogo"
        :tokenName="setSelectedCurrency"
        :isEditable="true"
@@ -60,7 +61,7 @@
                <div class="absolute left-0 top-0 h-full transition-colors duration-300 ease-in-out"
                :style="toggleStyle('slot')"></div>
             <div v-for="slot in [1, 2, 3]" :key="`slot-${slot}`"
-                 :class="selectedSlot === slot ? 'bg-button-active text-yellow-300' : 'bg-transparent text-custom-blue-inactive'"
+                 :class="selectedSlot === slot - 1 ? 'bg-button-active text-yellow-300' : 'bg-transparent text-custom-blue-inactive'"
                  class="flex items-center justify-center space-x-2 text-center py-1 px-4 sm:px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs md:text-sm lg:text-md cursor-pointer"
                  @click="selectSlot(slot)">
                  <span class="block w-full text-xs md:text-sm lg:text-md">{{ $t('message.slot') }}&nbsp;{{ slot }}</span>
@@ -69,7 +70,7 @@
         </div>
         <div v-else>
           <input type="range" min="30" max="360" step="30" v-model="vestingPeriod" class="range range-primary w-full max-w-xs" @input="adjustVestingPeriod">
-          <div class="text-teal font-origin mt-2">{{ $t('message.vestingperiod') }} {{ formattedVestingPeriod }}</div>
+          <div class="text-teal font-origin mt-2 mb-2 text-xs md:text-sm lg:text-md">{{ $t('message.vestingperiod') }} {{ formattedVestingPeriod }}</div>
         </div>
         <button 
           @click="handleStakeClick" 
@@ -77,7 +78,7 @@
           class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6 text-xs md:text-sm lg:text-lg">
           <orbit-spinner v-if="loading" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
           <span v-else>
-            {{ selectedOption === 'Staking' && selectedToken === 'PPePe' ? $t('message.sdivcomingsoon') : stakeButtonText }}
+            {{ stakeButtonText }}
           </span>
         </button>
       </div>
@@ -207,8 +208,16 @@
        return this.selectedOption === 'Vesting' ? this.$t('message.youvest') : this.$t('message.youstake');
      },
      stakeButtonText() {
-      return this.$t('message.stakelp');
-     },
+      if (this.selectedOption === 'Staking') {
+        if (this.selectedToken === 'PPePe') {
+          return this.$t('message.sdivcomingsoon');
+        }
+        return this.$t('message.stakelp');
+      } else if (this.selectedOption === 'Vesting') {
+        return this.$t('message.vesttokens');
+      }
+      return '';
+    },
      selectedVestingContractAddress() {
        console.log("Vesting Contract Address: ", this.contractAddresses[this.currentNetwork].vesting[this.selectedToken]);
        return this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
@@ -287,11 +296,12 @@
        return address && address !== '0x0000000000000000000000000000000000000000';
      },
      selectSlot(slot) {
-      if (this.selectedSlot === slot) {
+      const zeroBasedSlot = slot - 1;
+      if (this.selectedSlot === zeroBasedSlot) {
         this.selectedSlot = null;
         this.showWarning = false;
       } else {
-        this.selectedSlot = slot;
+        this.selectedSlot = zeroBasedSlot;
         this.showWarning = false;
       }
      },
@@ -394,10 +404,8 @@
        console.log("Selected Option: ", this.selectedOption);
    
        if (option === 'Staking') {
-         this.stakeButtonText = 'Stake LP';
          console.log("Selected Contract Address: ", this.selectedStakingContractAddress);
        } else {
-         this.stakeButtonText = 'Vest Tokens';
          console.log("Selected Contract Address: ", this.selectedVestingContractAddress);
        }
      },
@@ -427,14 +435,10 @@
         this.$root.$refs.notificationCard.showNotification("error", "Please enter a number greater than zero");
         return;
       }
-      if (this.selectedOption === 'Staking' && !this.selectedSlot) {
+      if (this.selectedOption === 'Staking' && this.selectedSlot === null) {
         this.$root.$refs.notificationCard.showNotification("error", "Please select a slot");
         return;
       }
-      // if (this.selectedOption === 'Vesting' && !this.timeIndex) {
-      //   this.$root.$refs.notificationCard.showNotification("error", "Please select a time period for vesting");
-      //   return;
-      // }
       try {
         this.loading = true;
         this.$root.$refs.notificationCard.showNotification("pending", "Transaction pending...");
@@ -507,7 +511,7 @@
         const actionContract = new ethers.Contract(contractAddress, contractABI, signer);
         let actionTx;
         if (this.selectedOption === 'Staking') {
-          const slot = Number(this.selectedSlot);
+          const slot = this.selectedSlot;
           actionTx = await actionContract[contractMethod](amountInWei, slot);
         } else if (this.selectedOption === 'Vesting') {
           actionTx = await actionContract[contractMethod](amountInWei, timeIndex);

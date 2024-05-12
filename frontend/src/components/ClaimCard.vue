@@ -36,8 +36,8 @@
       <div v-if="stakes.length > 0" class="w-full max-w-sm mx-auto md:max-w-md lg:max-w-lg">
         <p class="font-origin text-yellow-300">{{ $t('message.lpstakingslot') }}</p>
         <div :class="{ 'grid grid-cols-1 md:grid-cols-2 gap-4 justify-start': stakes.length > 1 }">
-          <div v-for="(stake, index) in stakes" :key="`stake-${selectedToken}-${index}`"
-              class="mb-4 last:mb-0 w-full max-w-full mx-auto cursor-pointer items-center relative" 
+          <div v-for="(stake, index) in stakes" :key="index"
+              class="mb-4 last:mb-4 w-full max-w-full mx-auto cursor-pointer items-center relative" 
               @click="selectStakingSlot(index)"
               :class="{
                'md:col-span-2 md:flex md:flex-col md:justify-center md:items-center md:text-center': [1, 3].includes(stakes.length) && index === stakes.length - 1,
@@ -147,7 +147,6 @@
  import ConnectWalletButton from './ConnectWalletButton.vue';
  import { OrbitSpinner } from 'epic-spinners';
  import LPStakingABI from '../ABI/LPStakingABI.json';
- import TokenABI from '../ABI/IERC20.json';
  import VestingABI from '../ABI/VestingABI.json';
  import { ethers } from 'ethers';
  import { toHandlers } from 'vue';
@@ -288,13 +287,13 @@
           this.selectedStakeIndex = index;
           this.showError = false;
         }
-      },
+     },
      selectVestSlot(index) {
       if (this.selectedVestIndex === index) {
         this.selectedVestIndex = null;
         this.showError = false;
       } else {
-        this.selectedVestIndex = index;
+        this.selectedVestIndex = index; 
         this.showError = false;
       }
      },
@@ -356,23 +355,40 @@
       console.log(`Using staking contract address: ${stakingContractAddress}`);
       const stakingContract = new ethers.Contract(stakingContractAddress, LPStakingABI, provider);
 
-      try {
-        const [slotsAvailability, stakes] = await stakingContract.getAllSlots(this.accountAddress);
-        const stakesWithRewards = await Promise.all(stakes.map(async (stake, index) => {
-          if (slotsAvailability[index] === false) {
-            const rewardsOwedWei = await stakingContract.getBasePrimordialOwed(stake.amount, this.accountAddress, index);
-            const rewardsOwed = parseFloat(ethers.formatEther(rewardsOwedWei)).toFixed(4);
-            return {
-              amount: stake.amount.toString(),
-              startTime: stake.startTime.toString(),
-              lastClaimTime: stake.lastClaimTime.toString(),
-              rewardsOwed
-            };
-          }
-          return null;
-        }));
+    //   try {
+    //     const [slotsAvailability, stakes] = await stakingContract.getAllSlots(this.accountAddress);
+    //     const stakesWithRewards = await Promise.all(stakes.map(async (stake, index) => {
+    //       if (slotsAvailability[index] === false) {
+    //         const rewardsOwedWei = await stakingContract.getBasePrimordialOwed(stake.amount, this.accountAddress, index);
+    //         const rewardsOwed = parseFloat(ethers.formatEther(rewardsOwedWei)).toFixed(4);
+    //         return {
+    //           amount: stake.amount.toString(),
+    //           startTime: stake.startTime.toString(),
+    //           lastClaimTime: stake.lastClaimTime.toString(),
+    //           rewardsOwed
+    //         };
+    //       }
+    //       return null;
+    //     }));
 
-        this.stakes = stakesWithRewards.filter(stake => stake !== null);
+    //     this.stakes = stakesWithRewards.filter(stake => stake !== null);
+    //     console.log(`Fetched ${this.stakes.length} staking slots with rewards.`);
+    //   } catch (error) {
+    //     console.error("Failed to fetch staking slots:", error);
+    //     this.stakes = [];
+    //   }
+    //  },
+        try {
+        const [slotsAvailability, stakes] = await stakingContract.getAllSlots(this.accountAddress);
+        const stakesWithRewards = stakes.map((stake, index) => ({
+          amount: stake.amount.toString(),
+          startTime: stake.startTime.toString(),
+          lastClaimTime: stake.lastClaimTime.toString(),
+          rewardsOwed: parseFloat(ethers.formatEther(stake.amount)).toFixed(4),
+          isEmpty: slotsAvailability[index]  
+      })).filter(stake => !stake.isEmpty);
+
+      this.stakes = stakesWithRewards;
         console.log(`Fetched ${this.stakes.length} staking slots with rewards.`);
       } catch (error) {
         console.error("Failed to fetch staking slots:", error);
@@ -608,6 +624,7 @@
         }
         this.showError = false;
         this.loadingUnstake = true;
+        this.$root.$refs.notificationCard.showNotification("pending", "Unstake LP token pending...");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
@@ -617,16 +634,18 @@
         const stakedAmount = ethers.parseUnits(this.stakedAmountWei, 18);
         const slot = this.selectedStakeIndex;
         console.log("Claim Click slot", slot);
-        const tx = await contract.claimReward(stakedAmount, slot);
+        const tx = await contract.unstakeLPToken(stakedAmount, slot);
         await tx.wait();
 
         this.loadingUnstake = false;
         this.fetchLPTokenBalances();
         this.fetchStakingSlots();
         //this.fetchTokenBalances();
+        this.$root.$refs.notificationCard.showNotification("success", "Unstake successful!");
       } catch (error) {
         this.loadingUnstake = false;
         console.error("Error during unstake:", error);
+        this.$root.$refs.notificationCard.showNotification("error", `Unstake failed: ${error.message}`);
       }
      },
      async handleClaimClick() {
@@ -638,6 +657,7 @@
         }
         this.showError = false;
         this.loadingClaim = true;
+        this.$root.$refs.notificationCard.showNotification("pending", "Claim Rewards pending...");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
@@ -656,9 +676,12 @@
         this.loadingClaim = false;
         this.fetchLPTokenBalances();
         this.fetchStakingSlots();
+        this.$root.$refs.notificationCard.showNotification("success", "Claim successful!");
       } catch (error) {
         this.loadingClaim = false;
         console.error("Error during claim:", error);
+        this.$root.$refs.notificationCard.showNotification("error", `Claim failed: ${error.message}`);
+
       }
      },
      async handleEmergencyWithdrawClick() {
@@ -670,6 +693,7 @@
         }
         this.showError = false;
         this.loadingEmergencyWithdraw = true;
+        this.$root.$refs.notificationCard.showNotification("pending", "Emergency Withdraw pending...");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const contractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
@@ -681,9 +705,11 @@
         this.loadingEmergencyWithdraw = false;
         this.fetchTokenBalances();
         this.fetchVestingSlots();
+        this.$root.$refs.notificationCard.showNotification("success", "Emergency Withdraw successful!");
       } catch (error) {
         this.loadingEmergencyWithdraw = false;
         console.error("Error during emergency withdraw:", error);
+        this.$root.$refs.notificationCard.showNotification("error", `Emergency Withdraw failed: ${error.message}`);
       }
      },
      async handleVestingClaimClick() {
@@ -695,6 +721,7 @@
         }
         this.showError = false;
         this.loadingVestingClaim = true;
+        this.$root.$refs.notificationCard.showNotification("pending", "Vesting Claim pending...");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const contractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
@@ -705,72 +732,11 @@
 
         this.loadingVestingClaim = false;
         this.fetchTokenBalances();
+        this.$root.$refs.notificationCard.showNotification("success", "Vesting Claim successful!");
       } catch (error) {
         this.loadingVestingClaim = false;
         console.error("Error during vesting claim:", error);
-      }
-     },
-     async handleStakeClick() {
-      try {
-        if (!this.currentNetwork) {
-          console.error('Network not detected or unsupported');
-          return;
-        }
-
-        if (this.selectedOption === 'Staking' && this.selectedSlot === null) {
-          console.error('No slot selected for staking');
-          return;
-        }
-
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-
-        let contractAddress, contractABI, contractMethod, timeIndex, tokenContractAddress;
-        if (this.selectedOption === 'Staking') {
-          contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
-          contractABI = LPStakingABI;
-          contractMethod = 'stakeLPToken';
-          tokenContractAddress = this.contractAddresses[this.currentNetwork].lptokens[this.selectedToken + 'LP'];
-        } else if (this.selectedOption === 'Vesting') {
-          contractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
-          contractABI = VestingABI;
-          contractMethod = 'vestTokens';
-          if (this.vestingPeriod === 365) {
-            timeIndex = 11; 
-          } else {
-            timeIndex = Math.round(this.vestingPeriod / 30) - 1;
-          }
-          tokenContractAddress = this.contractAddresses[this.currentNetwork].tokens[this.selectedToken.toLowerCase()];
-        } else {
-          console.error('Invalid option selected');
-          return;
-        }
-
-        if (!contractAddress || !tokenContractAddress) {
-          console.error(`No contract address found for option: ${this.selectedOption} and token: ${this.selectedToken}`);
-          return;
-        }
-
-        console.log(`Using contract address: ${contractAddress} for ${this.selectedOption}`);
-        const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
-
-        const tokenContract = new ethers.Contract(tokenContractAddress, TokenABI, signer);
-        const approveTx = await tokenContract.approve(contractAddress, amountInWei);
-        await approveTx.wait();
-        console.log("Tokens approved");
-
-        const actionContract = new ethers.Contract(contractAddress, contractABI, signer);
-        let actionTx;
-        if (this.selectedOption === 'Staking') {
-          const slot = Number(this.selectedSlot);
-          actionTx = await actionContract[contractMethod](amountInWei, slot);
-        } else if (this.selectedOption === 'Vesting') {
-          actionTx = await actionContract[contractMethod](amountInWei, timeIndex);
-        }
-        await actionTx.wait();
-        console.log(`${this.selectedOption} action completed successfully`);
-      } catch (error) {
-        console.error("Error during action:", error);
+        this.$root.$refs.notificationCard.showNotification("error", `Vesting Claim failed: ${error.message}`);
       }
      },
      updateWalletBalance() {
@@ -976,3 +942,4 @@
    border: none;
  }
  </style>
+

@@ -49,7 +49,7 @@
            {{ $t('message.addmetamask') }}
           </button>
         </div>
-        <div v-if="networkName" class="flex items-center mt-2 text-yellow-300 font-extrabold sm:text-xs md:text-sm md:absolute md:bottom-5 md:right-5">
+        <div v-if="networkName" class="flex items-center mt-2 mr-4 text-yellow-300 font-extrabold sm:text-xs md:text-sm md:absolute md:bottom-5 md:right-5">
           <p :class="{ 'text-purple-400': networkName === 'Sepolia' }" class="mr-2">
             {{ networkName }}
           </p>
@@ -129,6 +129,14 @@ export default {
           ppepelp: '0xbef860db27fc2f9668d13d624563d859c65a2b25',
         },
         sepolia: {
+          pepe: '0xf73BBA852bb30553326fA837f091aB7Ce740D0a9',
+          shib: '0x46cB0AfFA874719c7b273Df80954CC98199e2d69',
+          ppepe: '0xB6Ad6AD0364Eb5E8B109a55F01F4F68971B40E2B',
+          pepelp: '0xB08eAC861c0FD07e74c3Bc6FBABe309e1F82afE5',
+          shiblp: '0x5e29a016b9d79ef38Cc66B3E58A08af80b26FB91',
+          ppepelp: '0xE763297d736b73d7e37809513B7399D1F66443Ed',
+        },
+        base_sepolia: {
           pepe: '0xf73BBA852bb30553326fA837f091aB7Ce740D0a9',
           shib: '0x46cB0AfFA874719c7b273Df80954CC98199e2d69',
           ppepe: '0xB6Ad6AD0364Eb5E8B109a55F01F4F68971B40E2B',
@@ -542,20 +550,25 @@ export default {
       const networkIdStr = String(chainId);
       switch (networkIdStr) {
         case "1":
-          this.networkName = "Connected:";
+          this.networkName = " ";
           this.networkIcon = require('@/assets/eth.png');
           this.currentContractAddresses = this.contractAddresses.mainnet;
           break;
         case "11155111":
-          this.networkName = "Sepolia";
-          this.networkIcon = require('@/assets/eth.png');
+          this.networkName = " ";
+          this.networkIcon = require('@/assets/sepolia.png');
           this.currentContractAddresses = this.contractAddresses.sepolia;
           break;
-        // case "84531":
-        //   this.networkName = "base-testnet";
-        //   this.networkIcon = require('@/assets/base.png');
-        //   this.currentContractAddresses = this.contractAddresses.base-testnet;
-        //   break;
+        case "8453":
+          this.networkName = " ";
+          this.networkIcon = require('@/assets/base.png');
+          this.currentContractAddresses = this.contractAddresses.base;
+          break;
+        case "84531":
+          this.networkName = "";
+          this.networkIcon = require('@/assets/base_sepolia.png');
+          this.currentContractAddresses = this.contractAddresses.base_sepolia;
+          break;
         default:
           this.networkName = "Unknown Network";
           this.currentContractAddresses.pepe = null;

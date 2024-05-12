@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col items-start border-custom-blue bg-card-blue bg-opacity-100 p-4 rounded-xl w-full">
-    <div class="text-sm mb-2">{{ label }}</div>
+    <p :class="labelClass">{{ label }}</p>
     <div class="flex items-center justify-between w-full">
       <AmountInput 
         :currency="currency" 
@@ -65,6 +65,10 @@ export default {
       default: 'ETH'
     },
     label: {
+      type: String,
+      default: ''
+    },
+    labelClass: {
       type: String,
       default: ''
     },
