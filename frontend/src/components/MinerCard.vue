@@ -17,7 +17,7 @@
     <TokenInputCard 
       class="w-[350px] mb-1 text-teal font-origin"
       currency="ETH"
-      :label="$t('message.youstake')"
+      :label="$t('message.yousupply')"
       :currencyLogo="require('@/assets/eth.png')"
       :balance="ethBalance"
       :isEditable="true"
@@ -28,12 +28,14 @@
 
     <transition name="expand">
       <div 
-      class="cope-sequence cursor-pointer absolute transform 
-        translate-x-[-50%] scale-x-[1] transition-transform 
-        duration-500 ease-in-out rounded-xl h-10 max-w-[90vw] 
-        sm:max-w-[70vw] md:max-w-[50vw] lg:max-w-[40vw] xl:max-w-[32vw] 
-        flex items-center justify-center bg-card-blue bg-opacity-88 
-        text-custom-blue font-bold border-2 border-custom-blue 
+      class="cope-sequence cursor-pointer absolute left-1/2
+        transform -translate-x-1/2 sm:-translate-x-1/2 -translate-y-[-5%]
+        sm:-translate-y-[10%] md:-translate-y-[10%] 
+        lg:-translate-y-[15.5%] scale-x-[1] transition-transform
+        duration-500 ease-in-out rounded-xl h-10 max-w-[90vw]
+        sm:max-w-[70vw] md:max-w-[50vw] lg:max-w-[40vw] xl:max-w-[32vw]
+        flex items-center justify-center bg-card-blue bg-opacity-88
+        text-custom-blue font-bold border-2 border-custom-blue
         shadow-md z-2 overflow-hidden whitespace-nowrap sm:p-2"
         @click="toggleCopeSequence"
       >

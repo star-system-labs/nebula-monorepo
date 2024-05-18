@@ -1,7 +1,8 @@
 <template>
   <div class="flex justify-center items-center">
-    <button :disabled="insufficientFunds || enterAmount" @click="mine" class="mt-5 bg-gradient-to-r from-sky-600 to sky-900 hover:bg-button font-origin focus:outline-none focus:ring-2 focus:ring-blue-700 text-yellow-300 px-6 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors focus:outline-none">
+    <button :disabled="insufficientFunds || enterAmount || limitExceeded" @click="mine" class="mt-5 bg-gradient-to-r from-sky-600 to sky-900 hover:bg-button font-origin focus:outline-none focus:ring-2 focus:ring-blue-700 text-yellow-300 px-6 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors focus:outline-none">
       <orbit-spinner v-if="loading" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
+      <span v-if="limitExceeded">{{ $t('message.limitexceeded') }}</span>
       <span v-else-if="insufficientFunds">{{ $t('message.insufficientfunds') }}</span>
       <span v-else-if="enterAmount">{{ $t('message.enteramount') }}</span>
       <span v-else>{{ $t('message.mine') }}</span>
@@ -65,6 +66,9 @@ export default {
     },
     enterAmount() {
       return !parseFloat(this.enteredAmount);
+    },
+    limitExceeded() {
+      return parseFloat(this.enteredAmount) > 5;
     }
   },
   methods: {

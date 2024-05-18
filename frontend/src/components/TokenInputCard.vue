@@ -111,7 +111,11 @@ export default {
       return this.isToken ? this.rawBalance : this.balance;
     },
     isMaxSelectable() {
-      return parseFloat(this.correctBalance) > 0;
+      if (this.currency === 'ETH') {
+        return parseFloat(this.correctBalance) > 0;
+      } else {
+        return parseFloat(this.rawBalance) > 0;
+      }
     },
   },
   methods: {

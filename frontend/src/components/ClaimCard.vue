@@ -34,26 +34,30 @@
 
     <div v-if="selectedOption === 'Staking'" class="staking-rewards-container flex flex-col justify-center items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto mb-4">
       <div v-if="stakes.length > 0" class="w-full max-w-sm mx-auto md:max-w-md lg:max-w-lg">
-        <p class="font-origin text-yellow-300">{{ $t('message.lpstakingslot') }}</p>
+        <p class="font-origin text-yellow-300 mb-4">{{ $t('message.lpstakingslot') }}</p>
         <div :class="{ 'grid grid-cols-1 md:grid-cols-2 gap-4 justify-start': stakes.length > 1 }">
           <div v-for="(stake, index) in stakes" :key="index"
-              class="mb-4 last:mb-4 w-full max-w-full mx-auto cursor-pointer items-center relative" 
+              class="w-full max-w-full mx-auto cursor-pointer items-center relative" 
               @click="selectStakingSlot(index)"
               :class="{
                'md:col-span-2 md:flex md:flex-col md:justify-center md:items-center md:text-center': [1, 3].includes(stakes.length) && index === stakes.length - 1,
                'flex justify-center items-center p-4 rounded-lg bg-card-blue bg-opacity-85 hover:bg-blue-900 focus:border-green-500 transition-colors duration-300': true,
-               'border-2 border-custom-blue': selectedStakeIndex !== index,
-               'border-2 border-green-500': selectedStakeIndex === index,
+               'border-2 border-custom-blue': selectedStakeIndex !== stake.originalIndex,
+               'border-2 border-green-500': selectedStakeIndex === stake.originalIndex,
+               'opacity-50': stake.isEmpty,
+               'cursor-not-allowed': stake.isEmpty,
                'last:mr-0': index % 2 === 0,
               }">
             <div>
               <div class="md:text-left md:justify-center sm:justify-center sm:text-center sm:w-full" :class="{'md:text-center': [1, 3].includes(stakes.length) && index === stakes.length - 1}">
-                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.primordialemis') }}&nbsp;{{ primordialEmission }}</p>
-                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.amount') }}: {{ ethers.formatEther(stake.amount) }}</p>
-                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.starttime') }}: {{ formattedDate }}</p>
-                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md">{{ $t('message.rewardsowed') }}: {{ stake.rewardsOwed }}</p>
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md text-center">{{ $t('message.primordialemis') }}</p>
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md text-center">{{ primordialEmissions[index] }}%</p>
+                <hr class="my-2 border-t-2 border-yellow-300 w-full">
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md text-center">{{ $t('message.amount') }}: {{ ethers.formatEther(stake.amount) }}</p>
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md text-center">{{ $t('message.starttime') }}: {{ calculateDaysAgo(stake.startTime) }}</p>
+                <p class="font-origin text-yellow-300 text-xs md:text-sm lg:text-md text-center">{{ $t('message.rewardsowed') }}: {{ stake.rewardsOwed }}</p>
               </div>
-              <div v-if="selectedStakeIndex === index" class="absolute top-0 right-0 p-1">
+              <div v-if="selectedStakeIndex === stake.originalIndex" class="absolute top-0 right-0 p-1">
                 <img src="@/assets/check.png" alt="Selected" class="w-4 h-4">
               </div>
             </div>
@@ -178,10 +182,10 @@
        lockedTimes: {},
        vests: [],
        stakes: [],
-       primordialEmission:'0',
+       primordialEmissions: [],
        stakedAmountWei: '0',
        stakedAmount: '0',
-       rewardsOwed: '0',
+       rewardsOwed: [],
        currentNetwork: 'mainnet',
        tokenBalances: {
          ppepe: '0',
@@ -247,6 +251,34 @@
            ShibLP: '0x5e29a016b9d79ef38Cc66B3E58A08af80b26FB91',
           }
         },
+        base : {
+          staking: {
+
+          },
+          vesting: {
+
+          },
+          tokens: {
+
+          },
+          lptokens: {
+
+          }
+        },
+        base_sepolia: {
+          staking: {
+
+          },
+          vesting: {
+
+          },
+          token: {
+
+          },
+          lptokens: {
+
+          }
+        },
        },
        vestingPeriod: 30,
        selectedToken: 'PPePe',
@@ -270,6 +302,15 @@
      };
    },
    methods: {
+     convertEmissionToDailyRate(primordialEmission) {
+      // eslint-disable-next-line no-undef
+      const basisPoints = Number(primordialEmission);
+      console.log("Basis points:", basisPoints);
+      // eslint-disable-next-line no-undef
+      const dailyRate = basisPoints / 1000;
+      console.log("Daily rate:", dailyRate);
+      return dailyRate.toFixed(3);
+     },
      isValidAddress(address) {
       return address && address !== '0x0000000000000000000000000000000000000000';
      },
@@ -280,11 +321,12 @@
       this.vests = [...newVests];
      },
      selectStakingSlot(index) {
-        if (this.selectedStakeIndex === index) {
+        const originalIndex = this.stakes[index].originalIndex;
+        if (this.selectedStakeIndex === originalIndex) {
           this.selectedStakeIndex = null;
           this.showError = false;
         } else {
-          this.selectedStakeIndex = index;
+          this.selectedStakeIndex = originalIndex;
           this.showError = false;
         }
      },
@@ -349,47 +391,31 @@
       console.log(`Current network: ${network.name}`);
       const stakingContractAddress = this.contractAddresses[network.name].staking[this.selectedToken];
       if (!this.isValidAddress(stakingContractAddress)) {
-        console.log("Staking contract address is invalid or not deployed yet:", stakingContractAddress);
+        console.log("Staking contract address is invalid:", stakingContractAddress);
         return;
       }
       console.log(`Using staking contract address: ${stakingContractAddress}`);
       const stakingContract = new ethers.Contract(stakingContractAddress, LPStakingABI, provider);
 
-    //   try {
-    //     const [slotsAvailability, stakes] = await stakingContract.getAllSlots(this.accountAddress);
-    //     const stakesWithRewards = await Promise.all(stakes.map(async (stake, index) => {
-    //       if (slotsAvailability[index] === false) {
-    //         const rewardsOwedWei = await stakingContract.getBasePrimordialOwed(stake.amount, this.accountAddress, index);
-    //         const rewardsOwed = parseFloat(ethers.formatEther(rewardsOwedWei)).toFixed(4);
-    //         return {
-    //           amount: stake.amount.toString(),
-    //           startTime: stake.startTime.toString(),
-    //           lastClaimTime: stake.lastClaimTime.toString(),
-    //           rewardsOwed
-    //         };
-    //       }
-    //       return null;
-    //     }));
-
-    //     this.stakes = stakesWithRewards.filter(stake => stake !== null);
-    //     console.log(`Fetched ${this.stakes.length} staking slots with rewards.`);
-    //   } catch (error) {
-    //     console.error("Failed to fetch staking slots:", error);
-    //     this.stakes = [];
-    //   }
-    //  },
-        try {
+      try {
         const [slotsAvailability, stakes] = await stakingContract.getAllSlots(this.accountAddress);
-        const stakesWithRewards = stakes.map((stake, index) => ({
+        this.rewardsOwed = [];
+        if (!stakes || !stakes.length) {
+          console.error("No stakes returned or stakes are empty");
+          this.stakes = [];
+          return;
+        }
+        this.stakes = stakes.map((stake, index) => ({
           amount: stake.amount.toString(),
           startTime: stake.startTime.toString(),
           lastClaimTime: stake.lastClaimTime.toString(),
-          rewardsOwed: parseFloat(ethers.formatEther(stake.amount)).toFixed(4),
-          isEmpty: slotsAvailability[index]  
-      })).filter(stake => !stake.isEmpty);
+          rewardsOwed: "0.0000",
+          isEmpty: slotsAvailability[index],
+          originalIndex: index
+        })).filter(stake => !stake.isEmpty);
 
-      this.stakes = stakesWithRewards;
         console.log(`Fetched ${this.stakes.length} staking slots with rewards.`);
+        await this.fetchPrimordialEmissions();
       } catch (error) {
         console.error("Failed to fetch staking slots:", error);
         this.stakes = [];
@@ -422,6 +448,32 @@
           this.vests = [];
         }
      },
+     formattedStartTime(stakes) {
+      if (!stakes || !stakes.startTime || stakes.startTime === 0) {
+        return 'Invalid date';
+      }
+      console.log("Stake:", stakes);
+      const date = new Date(stakes.startTime * 1000);
+      return formatDistanceToNow(date, { addSuffix: true });
+     },
+     calculateDaysAgo(startTime) {
+      const startDate = new Date(startTime * 1000);
+      const currentDate = new Date();
+      const timeDifference = currentDate - startDate;
+
+      const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
+      if (daysDifference >= 1) {
+        return `${daysDifference} days ago`;
+      }
+
+      const hoursDifference = Math.floor(timeDifference / (1000 * 60 * 60));
+      if (hoursDifference >= 1) {
+        return `${hoursDifference} hrs ago`;
+      }
+
+      const minutesDifference = Math.floor(timeDifference / (1000 * 60));
+      return `${minutesDifference} mins ago`;
+     },
      async calculateLockedTimeUsingContract(startTime, endTime, index) {
       if (!this.accountAddress || !this.selectedToken) return; 
       const provider = new ethers.BrowserProvider(window.ethereum);
@@ -442,68 +494,73 @@
         this.lockedTimes[index] = 'Error';
       }
      },
-     async fetchPrimordialEmission() {
-      try {
-        if (!this.accountAddress || this.selectedSlot === null) {
-          console.error('Account address or slot not specified');
-          return;
-        }
-
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
-        if (!this.isValidAddress(contractAddress)) {
-          console.log("Primordial Emission contract address is invalid or not deployed yet:", contractAddress);
-          return;
-        }
-        const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
-        const emission = await contract.getPrimordialEmission(this.accountAddress, this.selectedSlot);
-        console.log("Primordial Emission:", emission);
-        this.primordialEmission = emission;
-      } catch (error) {
-        console.error("Error fetching Primordial Emission:", error);
-        if (error.code === -32000) {
-          console.error("Execution reverted by the EVM. Check contract conditions and inputs.");
-        }
+     async fetchPrimordialEmissions() {
+  this.primordialEmissions = new Array(this.stakes.length).fill("0.0000");
+  await Promise.all(this.stakes.map(async (stake, index) => {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
+      if (!this.isValidAddress(contractAddress)) {
+        console.log("Primordial Emission contract address is invalid:", contractAddress);
+        return;
       }
-     },
-     async fetchStakingInfo() {
-      try {
-        if (!this.accountAddress || this.selectedSlot === null) {
-          console.error('Account address or slot not specified');
-          return;
-        }
+      const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
+      const emissionPreConversion = await contract.getPrimordialEmission(this.accountAddress, index);
+      console.log("Emission:", emissionPreConversion);
+      const emission = this.convertEmissionToDailyRate(emissionPreConversion);
+      console.log("Emission:", emission);
+      if (!emission || emission === '0.000') {
+        console.error(`Emission result is zero or undefined for slot ${index}`, emission);
+        this.primordialEmissions[index] = "0.000";
+      } else {
+        this.primordialEmissions[index] = emission;
+      }
+      console.log("Primordial Emission for slot", index, ":", this.primordialEmissions[index]);
+    } catch (error) {
+      console.error("Error fetching Primordial Emission for slot", index, ":", error);
+      if (error.code === -32000) {
+        console.error("Execution reverted by the EVM.");
+      }
+    }
+  }));
+},
+async fetchAllPrimordialEmissions() {
+  this.primordialEmissions = new Array(this.stakes.length).fill("0.0000");
+  await Promise.all(this.stakes.map(async (stake, index) => {
+    await this.fetchPrimordialEmissions(index);
+  }));
+},
+     async fetchBasePrimordialOwed() {
+      if (!this.accountAddress) {
+        console.error('Account address not specified');
+        return;
+      }
+
+      await this.fetchStakingSlots();
+      console.log("Stakes:", this.stakes);
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
       if (!this.isValidAddress(contractAddress)) {
-        console.log("Staking contract address is invalid or not deployed yet:", contractAddress);
+        console.error("Staking contract address is invalid:", contractAddress);
         return;
       }
       const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
-      const slot = Number(this.selectedSlot);
-      const stakerInfo = await contract.getStakerInfo(this.accountAddress, slot);
-      console.log(`Fetching staking info for address: ${this.accountAddress} and slot: ${slot}`);
-      contract.getStakerInfo(this.accountAddress, slot)
-      .then((response) => {
-        console.log('Raw response:', response);
-        this.stakedAmountWei = ethers.formatUnits(stakerInfo.stakedAmount, 18);
-        this.stakedAmount = this.abbreviateNumber(parseFloat(ethers.formatEther(stakerInfo.stakedAmount)).toFixed(2));
-        this.lpStakeTime = stakerInfo.startTime.toString();
-        const lpClaimTimeInEther = ethers.formatUnits(stakerInfo.lpClaimTime, 'ether');
-        this.lpClaimTime = parseFloat(lpClaimTimeInEther).toFixed(2);
-      })
-      .catch((error) => {
-        console.error('Error fetching staking info:', error);
-      });
 
-      console.log(`Staked Amount: ${ethers.formatEther(stakerInfo[0])}`);
-      console.log(`LP Stake Time: ${stakerInfo[1].toString()}`);
-      console.log(`LP Claim Time: ${stakerInfo[2].toString()}`);
+      this.rewardsOwed = new Array(this.stakes.length).fill("0.0000");
+      console.log("Rewards Owed:", this.rewardsOwed);
 
-      const basePrimordialOwed = await contract.getBasePrimordialOwed(stakerInfo.stakedAmount, this.accountAddress, slot);
-      this.rewardsOwed = parseFloat(ethers.formatEther(basePrimordialOwed)).toFixed(4);
+      try {
+        await Promise.all(this.stakes.map(async (stake, index) => {
+          if (!stake.isEmpty) {
+            const basePrimordialOwed = await contract.getBasePrimordialOwed(stake.amount, this.accountAddress, index);
+            this.stakes[index].rewardsOwed = parseFloat(ethers.formatEther(basePrimordialOwed)).toFixed(4);
+            console.log("Rewards Owed:", this.stakes[index].rewardsOwed);
+          }
+        }));
+        //console.log("Rewards Owed:", this.rewardsOwed);
       } catch (error) {
-        console.error("Error fetching staking info:", error);
+        console.error("Error fetching base primordial owed for all slots:", error);
       }
      },
      subscribeToNewBlocks() {
@@ -541,7 +598,7 @@
           try {
             const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
             if (!balanceInWei || balanceInWei === '0x') {
-              console.log(`${tokenName} at ${tokenAddress} has no balance data or is not correctly set.`);
+              console.log(`${tokenName} at ${tokenAddress} has no balance data.`);
               continue;
             }
             const balanceInEther = ethers.formatEther(balanceInWei);
@@ -568,7 +625,7 @@
            console.log("Token Contract Address:", tokenContract);
            const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
            if (!balanceInWei || balanceInWei === '0x') {
-             console.log(`${tokenName} at ${tokenAddress} has no balance data or is not correctly deployed.`);
+             console.log(`${tokenName} at ${tokenAddress} has no balance data.`);
              continue;
            }
            const balanceInEther = ethers.formatEther(balanceInWei);
@@ -666,9 +723,10 @@
         const contract = new ethers.Contract(contractAddress, LPStakingABI, signer);
         console.log("Loaded ABI: ", LPStakingABI);
 
-        const stakedAmount = ethers.parseUnits(this.stakedAmountWei, 18);
-        console.log("Claim Click stakedAmount", stakedAmount);
+        const selectedStake = this.stakes.find(stake => stake.originalIndex === this.selectedStakeIndex);
+        const stakedAmount = ethers.parseUnits(selectedStake.amount, 18);
         const slot = this.selectedStakeIndex;
+        console.log("Claim Click stakedAmount", stakedAmount);
         console.log("Claim Click slot", slot);
         const tx = await contract.claimReward(stakedAmount, slot);
         await tx.wait();
@@ -681,7 +739,6 @@
         this.loadingClaim = false;
         console.error("Error during claim:", error);
         this.$root.$refs.notificationCard.showNotification("error", `Claim failed: ${error.message}`);
-
       }
      },
      async handleEmergencyWithdrawClick() {
@@ -732,6 +789,7 @@
 
         this.loadingVestingClaim = false;
         this.fetchTokenBalances();
+        this.fetchVestingSlots();
         this.$root.$refs.notificationCard.showNotification("success", "Vesting Claim successful!");
       } catch (error) {
         this.loadingVestingClaim = false;
@@ -744,9 +802,6 @@
      }
    },
    computed: {
-     formattedStartTime() {
-       return formatDistanceToNow(new Date(this.stake.startTime * 1000), { addSuffix: true });
-     },
      ethers() {
       return ethers;
      },
@@ -830,7 +885,8 @@
           this.$emit('update:accountAddress', accounts[0]);
           this.fetchLPTokenBalances();
           this.fetchTokenBalances();
-          this.fetchPrimordialEmission();
+          this.fetchBasePrimordialOwed();
+          this.fetchPrimordialEmissions();
           this.fetchVestingSlots();
           this.fetchStakingSlots();
           //this.fetchAllSlots();
@@ -851,8 +907,8 @@
        if (newVal !== oldVal) {
          this.fetchLPTokenBalances();
          this.fetchTokenBalances();
-         this.fetchStakingInfo();
-         this.fetchPrimordialEmission();
+         this.fetchBasePrimordialOwed();
+         this.fetchPrimordialEmissions();
        }
      },
      selectedToken(newVal, oldVal, newToken, oldToken) {
@@ -863,8 +919,8 @@
       }
       if (newVal !== oldVal) {
         this.isPPEPESelected = newVal === 'PPEPE';
-        this.fetchStakingInfo();
-        this.fetchPrimordialEmission();
+        this.fetchBasePrimordialOwed();
+        this.fetchPrimordialEmissions();
         this.fetchVestingSlots();
         this.fetchStakingSlots();
         //this.fetchAllSlots();
@@ -942,4 +998,3 @@
    border: none;
  }
  </style>
-
