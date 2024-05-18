@@ -204,6 +204,10 @@
      };
    },
    computed: {
+     isMaxButtonDisabled() {
+      const balance = this.lpTokenBalances[this.selectedToken.toLowerCase()];
+      return !balance || balance === '0.00';
+     },
      stakeLabel() {
        return this.selectedOption === 'Vesting' ? this.$t('message.youvest') : this.$t('message.youstake');
      },
@@ -350,7 +354,7 @@
          for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].tokens)) {
            //console.log(`Fetching balance for ${tokenName} at address ${tokenAddress}`);
            if (!this.isValidAddress(tokenAddress)) {
-             console.error("Token contract address is invalid or not deployed yet:", tokenAddress);
+             console.error("Token contract address is invalid:", tokenAddress);
              continue;
            }
            const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
