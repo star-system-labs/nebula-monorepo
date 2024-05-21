@@ -141,8 +141,8 @@ export default {
   },
   methods: {
     async fetchPairData() {
-      const infuraUrl = process.env.VUE_APP_INFURA_LINK;
-      const provider = new ethers.JsonRpcProvider(infuraUrl, undefined, {
+      const rpcUrl = process.env.ALCHEMY_RPC;
+      const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, {
         staticNetwork: true
       });
       const pairAddress = '0xA43fe16908251ee70EF74718545e4FE6C5cCEc9f';
@@ -175,8 +175,8 @@ export default {
       return pair;
     },
     async swapQuote(ethAmount) {
-      const infuraUrl = process.env.VUE_APP_INFURA_LINK;
-      const provider = new ethers.JsonRpcProvider(infuraUrl, undefined, {
+      const rpcUrl = process.env.ALCHEMY_RPC;
+      const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, {
         staticNetwork: true
       });
       const routerAddress = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";

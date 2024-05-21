@@ -171,9 +171,9 @@
            Shib: '0x533Bf6eA7868abC6C78D73E60EB795Cb5FCa14C1',
           },
           vesting: {
-           PPePe: '0x9D1CE06759B6eC0e89Bf61F32cF7E0c00d0655DA',
-           PePe: '0x44B09a5aDBAC9E58d023Ccce06F397483093ab67',
-           Shib: '0xA5bbb0628FbB9cb520D26Ebe63dA59402A58d78b',
+           PPePe: '0x25B4DB21496F4A4447E3c18e8Acc72351EcD4BEb',
+           PePe: '0xA65069D7b04e9Ab701D4504B83cE0E86d2eB1df5',
+           Shib: '0x2e0f0D476812beaE3782EeA3D957CDEb25A886b0',
           },
           tokens: {
            ppepe: '0xB6Ad6AD0364Eb5E8B109a55F01F4F68971B40E2B',
@@ -508,7 +508,7 @@
         console.log(`Using contract address: ${contractAddress} for ${this.selectedOption}`);
         const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
         const tokenContract = new ethers.Contract(tokenContractAddress, TokenABI, signer);
-        const approveTx = await tokenContract.approve(contractAddress, (amountInWei + 1000000000000000000n));
+        const approveTx = await tokenContract.approve(contractAddress, (amountInWei)); //+ 1000000000000000000n));
         await approveTx.wait();
         console.log("Tokens approved");
 

@@ -79,11 +79,11 @@
 
     <div v-if="selectedOption === 'Vesting'" class="flex flex-col justify-center items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-55 p-5 rounded-xl w-full mx-auto mb-4">
       <div v-if="vests && vests.length" class="w-full max-w-sm mx-auto md:max-w-md lg:max-w-lg">
-        <p class="font-origin text-yellow-300">{{ $t('message.vestingslots') }}</p>          
+        <p class="font-origin text-yellow-300 mb-4">{{ $t('message.vestingslots') }}</p>          
           <div :class="{ 'grid grid-cols-1 md:grid-cols-2 gap-4 justify-start': vests.length > 1 }">
           <div v-for="(vest, index) in vests" :key="index" 
             :ref="'vestSlot' + index"
-            class="mb-0 last:mb-4 w-full max-w-full mx-auto cursor-pointer relative" 
+            class="mb-0 last:mb-0 w-full max-w-full mx-auto cursor-pointer relative" 
             @click="selectVestSlot(index)"
             :class="{
               'md:col-span-2 md:flex md:flex-col md:justify-center md:items-center md:text-center': [1, 3, 5, 7, 9, 11].includes(vests.length) && index === vests.length - 1,
@@ -241,9 +241,9 @@
            Shib: '0x533Bf6eA7868abC6C78D73E60EB795Cb5FCa14C1',
           },
           vesting: {
-           PPePe: '0x9D1CE06759B6eC0e89Bf61F32cF7E0c00d0655DA',
-           PePe: '0x44B09a5aDBAC9E58d023Ccce06F397483093ab67',
-           Shib: '0xA5bbb0628FbB9cb520D26Ebe63dA59402A58d78b',
+           PPePe: '0x25B4DB21496F4A4447E3c18e8Acc72351EcD4BEb',
+           PePe: '0xA65069D7b04e9Ab701D4504B83cE0E86d2eB1df5',
+           Shib: '0x2e0f0D476812beaE3782EeA3D957CDEb25A886b0',
           },
           tokens: {
            ppepe: '0xB6Ad6AD0364Eb5E8B109a55F01F4F68971B40E2B',
@@ -342,6 +342,7 @@
         this.showError = false;
       } else {
         this.selectedVestIndex = originalIndex; 
+        console.log(`Selected vest slot: ${originalIndex}`);
         this.showError = false;
       }
      },
@@ -373,7 +374,7 @@
         const days = Math.ceil(timeDiff / (24 * 60 * 60 * 1000));
         return `${days} days`;
       } else {
-        const months = Math.ceil(timeDiff / (30 * 24 * 60 * 60 * 1000));
+        const months = Math.floor(timeDiff / (30 * 24 * 60 * 60 * 1000));
         return `${months} mos.`;
       }
      },
@@ -387,28 +388,28 @@
       });
     },
      async fetchAllVests() {
-  if (!this.accountAddress || !this.selectedToken) return;
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const vestingContractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
-  const vestingContract = new ethers.Contract(vestingContractAddress, VestingABI, provider);
+      if (!this.accountAddress || !this.selectedToken) return;
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const vestingContractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
+      const vestingContract = new ethers.Contract(vestingContractAddress, VestingABI, provider);
 
-  try {
-    const [slotsAvailability, vests] = await vestingContract.getAllSlots(this.accountAddress);
-    this.vests = vests.map((vest, index) => ({
-      index: index,
-      originalIndex: index,
-      amount: vest.amount.toString(),
-      startTime: vest.startTime.toString(),
-      endTime: vest.endTime.toString(),
-      apr: vest.apr.toString(),
-      active: slotsAvailability[index],
-    })).filter(vest => vest.active);
-    console.log(`Fetched active vesting slots.`);
-  } catch (error) {
-    console.error("Failed to fetch vesting slots:", error);
-    this.vests = [];
-  }
-},
+      try {
+        const [slotsAvailability, vests] = await vestingContract.getAllSlots(this.accountAddress);
+        this.vests = vests.map((vest, index) => ({
+          index: index,
+          originalIndex: index,
+          amount: vest.amount.toString(),
+          startTime: vest.startTime.toString(),
+          endTime: vest.endTime.toString(),
+          apr: vest.apr.toString(),
+          active: slotsAvailability[index],
+        })).filter(vest => vest.active);
+        console.log(`Fetched active vesting slots.`);
+      } catch (error) {
+        console.error("Failed to fetch vesting slots:", error);
+        this.vests = [];
+      }
+     },
      async fetchStakingSlots() {
       if (!this.accountAddress || !this.selectedToken) return; 
       const provider = new ethers.BrowserProvider(window.ethereum);
@@ -448,40 +449,40 @@
       }
      },
      async fetchVestingSlots() {
-  if (!this.accountAddress || !this.selectedToken) return; 
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  const network = await provider.getNetwork();
-  console.log(`Current network: ${network.name}`);
-  const vestingContractAddress = this.contractAddresses[network.name].vesting[this.selectedToken];
-  console.log(`Using vesting contract address: ${vestingContractAddress}`);
-  const vestingContract = new ethers.Contract(vestingContractAddress, VestingABI, provider);
+      if (!this.accountAddress || !this.selectedToken) return; 
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const network = await provider.getNetwork();
+      console.log(`Current network: ${network.name}`);
+      const vestingContractAddress = this.contractAddresses[network.name].vesting[this.selectedToken];
+      console.log(`Using vesting contract address: ${vestingContractAddress}`);
+      const vestingContract = new ethers.Contract(vestingContractAddress, VestingABI, provider);
 
-  try {
-    const [slotsAvailability, vests] = await vestingContract.getAllSlots(this.accountAddress);
-    if (!vests || !vests.length) {
-        console.error("No vests returned or vests are empty");
+      try {
+        const [slotsAvailability, vests] = await vestingContract.getAllSlots(this.accountAddress);
+        if (!vests || !vests.length) {
+            console.error("No vests returned or vests are empty");
+            this.vests = [];
+            return;
+        }
+        this.vests = vests.map((vest, index) => ({
+          amount: vest.amount.toString(),
+          startTime: vest.startTime.toString(),
+          endTime: vest.endTime.toString(),
+          apr: vest.apr.toString(),
+          originalIndex: index,
+          isEmpty: slotsAvailability[index]
+        })).filter(vest => !vest.isEmpty);
+
+        for (const [index, vest] of this.vests.entries()) {
+          await this.calculateLockedTimeUsingContract(vest.startTime, vest.endTime, index);
+        }
+        console.log(`Fetched ${this.vests.length} active vesting slots.`);
+      } catch (error) {
+        console.error("Failed to fetch vesting slots:", error);
         this.vests = [];
-        return;
-    }
-    this.vests = vests.map((vest, index) => ({
-      amount: vest.amount.toString(),
-      startTime: vest.startTime.toString(),
-      endTime: vest.endTime.toString(),
-      apr: vest.apr.toString(),
-      originalIndex: index,
-      isEmpty: slotsAvailability[index]
-    })).filter(vest => !vest.isEmpty);
-
-    for (const [index, vest] of this.vests.entries()) {
-      await this.calculateLockedTimeUsingContract(vest.startTime, vest.endTime, index);
-    }
-    console.log(`Fetched ${this.vests.length} active vesting slots.`);
-  } catch (error) {
-    console.error("Failed to fetch vesting slots:", error);
-    this.vests = [];
-  }
-},
+      }
+     },
      formattedStartTime(stakes) {
       if (!stakes || !stakes.startTime || stakes.startTime === 0) {
         return 'Invalid date';
@@ -529,41 +530,41 @@
       }
      },
      async fetchPrimordialEmissions() {
-  this.primordialEmissions = new Array(this.stakes.length).fill("0.0000");
-  await Promise.all(this.stakes.map(async (stake, index) => {
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
-      if (!this.isValidAddress(contractAddress)) {
-        console.log("Primordial Emission contract address is invalid:", contractAddress);
-        return;
-      }
-      const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
-      const emissionPreConversion = await contract.getPrimordialEmission(this.accountAddress, index);
-      console.log("Emission:", emissionPreConversion);
-      const emission = this.convertEmissionToDailyRate(emissionPreConversion);
-      console.log("Emission:", emission);
-      if (!emission || emission === '0.000') {
-        console.error(`Emission result is zero or undefined for slot ${index}`, emission);
-        this.primordialEmissions[index] = "0.000";
-      } else {
-        this.primordialEmissions[index] = emission;
-      }
-      console.log("Primordial Emission for slot", index, ":", this.primordialEmissions[index]);
-    } catch (error) {
-      console.error("Error fetching Primordial Emission for slot", index, ":", error);
-      if (error.code === -32000) {
-        console.error("Execution reverted by the EVM.");
-      }
-    }
-  }));
-},
-async fetchAllPrimordialEmissions() {
-  this.primordialEmissions = new Array(this.stakes.length).fill("0.0000");
-  await Promise.all(this.stakes.map(async (stake, index) => {
-    await this.fetchPrimordialEmissions(index);
-  }));
-},
+      this.primordialEmissions = new Array(this.stakes.length).fill("0.0000");
+      await Promise.all(this.stakes.map(async (stake, index) => {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const contractAddress = this.contractAddresses[this.currentNetwork].staking[this.selectedToken];
+          if (!this.isValidAddress(contractAddress)) {
+            console.log("Primordial Emission contract address is invalid:", contractAddress);
+            return;
+          }
+          const contract = new ethers.Contract(contractAddress, LPStakingABI, provider);
+          const emissionPreConversion = await contract.getPrimordialEmission(this.accountAddress, index);
+          console.log("Emission:", emissionPreConversion);
+          const emission = this.convertEmissionToDailyRate(emissionPreConversion);
+          console.log("Emission:", emission);
+          if (!emission || emission === '0.000') {
+            console.error(`Emission result is zero or undefined for slot ${index}`, emission);
+            this.primordialEmissions[index] = "0.000";
+          } else {
+            this.primordialEmissions[index] = emission;
+          }
+          console.log("Primordial Emission for slot", index, ":", this.primordialEmissions[index]);
+        } catch (error) {
+          console.error("Error fetching Primordial Emission for slot", index, ":", error);
+          if (error.code === -32000) {
+            console.error("Execution reverted by the EVM.");
+          }
+        }
+      }));
+     },
+     async fetchAllPrimordialEmissions() {
+      this.primordialEmissions = new Array(this.stakes.length).fill("0.0000");
+      await Promise.all(this.stakes.map(async (stake, index) => {
+        await this.fetchPrimordialEmissions(index);
+      }));
+     },
      async fetchBasePrimordialOwed() {
       if (!this.accountAddress) {
         console.error('Account address not specified');
@@ -799,10 +800,16 @@ async fetchAllPrimordialEmissions() {
         this.fetchTokenBalances();
         this.fetchVestingSlots();
         this.$root.$refs.notificationCard.showNotification("success", "Emergency Withdraw successful!");
+        await this.fetchVestingSlots();
       } catch (error) {
         this.loadingEmergencyWithdraw = false;
+        if (error.code === 4001) {
+          this.$root.$refs.notificationCard.showNotification("error", "User Rejected Transaction");
+          console.log("User Rejected Transaction");
+        } else {
         console.error("Error during emergency withdraw:", error);
         this.$root.$refs.notificationCard.showNotification("error", `Emergency Withdraw failed: ${error.message}`);
+        }
       }
      },
      async handleVestingClaimClick() {
@@ -1049,4 +1056,9 @@ async fetchAllPrimordialEmissions() {
    margin-left: 0;
    border: none;
  }
+ .vest-slot-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
  </style>
