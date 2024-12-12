@@ -47,7 +47,10 @@ const login = async () => {
   console.log('Attempting login with:', {
     enteredUsername: username.value,
     envUsername: import.meta.env.VITE_USERNAME,
-    matched: username.value === import.meta.env.VITE_USERNAME
+    matched: username.value === import.meta.env.VITE_USERNAME,
+    enteredPassword: password.value,
+    envPassword: import.meta.env.VITE_PASSWORD,
+    passwordMatched: password.value === import.meta.env.VITE_PASSWORD
   });
   
   if (username.value === import.meta.env.VITE_USERNAME && 
