@@ -44,6 +44,12 @@ const errorMessage = ref('')
 const emit = defineEmits(['login-success']);
 
 const login = async () => {
+  console.log('Attempting login with:', {
+    enteredUsername: username.value,
+    envUsername: import.meta.env.VITE_USERNAME,
+    matched: username.value === import.meta.env.VITE_USERNAME
+  });
+  
   if (username.value === import.meta.env.VITE_USERNAME && 
       password.value === import.meta.env.VITE_PASSWORD) {
     localStorage.setItem('authenticated', 'true')
