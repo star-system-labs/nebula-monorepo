@@ -19,6 +19,12 @@
           <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold font-origin text-yellow-300 mb-4">{{ section.title }}</h2>
           <div class="prose max-w-none font-nixie font-bold text-teal">
             <p class="font-bold">{{ section.content }}</p>
+            <div v-if="section.phases" class="mt-4 space-y-4">
+              <div v-for="phase in section.phases" :key="phase.title">
+                <h3 class="text-lg sm:text-xl md:text-2xl font-bold font-origin text-yellow-300">{{ phase.title }}</h3>
+                <p class="font-bold">{{ phase.content }}</p>
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -28,7 +34,7 @@
   
   <script setup>
   const quickLinks = [
-    { name: 'Website', url: 'https://starsystemlabs.com' },
+    { name: 'Website', url: 'https://www.starsystemlabs.com' },
     { name: 'Documentation', url: 'https://docs.starsystemlabs.com' },
     { name: 'Whitepaper', url: 'https://github.com/star-system-labs/whitepaper/blob/main/Star-System-Labs-Whitepaper.pdf' },
     { name: 'Nebula', url: 'https://nebula.starsystemlabs.com' },
@@ -53,8 +59,30 @@
       content: "Nebula provides secure place to lock your meme coins and generate Bitcoin and yield other meme coins, while providing a platform for meme coins to be traded, aggregated, and managed."
     },
     {
+      title: 'Our Execution',
+      content: "Our execution plan is divided into four phases to ensure a smooth rollout of the Nebula Platform.",
+      phases: [
+        {
+          title: 'Phase 1',
+          content: "Deployment of the Nebula Platform v1 which includes the Miner, Staking/Vesting mechanisms, and Rewards interface. The miner is the gem in the initial deployment of phase 1 as it allows legal and secure distribution of the PrimordialPePe token without compromising SEC regulations. We allow the users to choose one of two token to support ( PEPE or POND ) and it sends the ETH liquidity into that market, from there the users are gifted PrimordialPePe tokens as a reward for their support. Meanwhile the Miner manages the liquidity positions and after a set period liquidates this position into a Gnosis Multi Signature Vault. THe Staking and Vesting systems allow for locking of the intially supported meme tokens to restrict the supply of said tokens while providing an incentive and reward. Currently we only support PEPE, PPEPE and SHIB for staking/vesting until the voting goes live with the Nebula DAO. We will also deploy the Abacus Mobile app v1 allowing users to watch their holdings in the Nebula Platform."
+        },
+        {
+          title: 'Phase 2',
+          content: "Focuses on the deployment of the StarDustDividends token, which will be distributed as an airdrop to early users of the Nebula Platform. Users will be able to lock their meme tokens to aqcuire PPEPE, then lock the PPEPE to acquire SDIV tokens. This will allow meme coins holder a path to lock up their assets ( memes ) and generate BTC yield. We will also deploy the Nebula DAO and integrate it into the Nebula Platform as a v1.5 to allow for voting on integrating new meme coins to the Nebula Platform, allowing the newly integrated meme coins to then be staked/vested for rewards."
+        },
+        {
+          title: 'Phase 3',
+          content: "Deployment of the Nebula Platform v2 which will include Nebula Swap and Aggregator (Along with the CosmicYield CYLD Token), Nebula Microlending, Nebula DAO, NFT management, and advanced portfolio style tools. The Nebula Swap is a heavily updated Uniswap system that use solidity v8 which has integrated math for cheaper gas fees. The Nebula Aggregator will allow users to trade on multiple routers and get the best options for their swap allowing the user to select which router they want to use, this system ( and the nebula swap system ) will qualify for a cashback rewards for its users. Nebula Microlending, DAO and NFT management will allow a whole suite of tools for meme coin holders. The advanced portfolio tools will allow the users to see all aspects of their investments from profit/loss to number of swap and even rewards."
+        },
+        {
+          title: 'Phase 4',
+          content: "Depoyment of the NFT system which include the v1 NFTs for free and the coming NFT game which utilizes the v2 and v3 NFTs to create yield boosting tools for your meme yield pools (MYP)."
+        }
+      ]
+    },
+    {
       title: 'Conclusion',
-      content: "We're building the future of meme coin infrastructure."
+      content: "We're building the future of meme coin infrastructure to allow for true finance to occur with meme coins. Which currently is a multi trillion dollar market that is untapped completely in this aspect. Not only are we providing the tools for everyone to benefit, but we give them the tools to vote in any asset the community wants to be supported."
     }
   ]
   </script>
