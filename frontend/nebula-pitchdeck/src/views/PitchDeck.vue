@@ -12,8 +12,8 @@
       </div>
       <div class="space-y-8">
         <section v-for="(section, index) in sections" :key="section.title">
-          <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold font-origin text-yellow-300 mb-4">{{ section.title }}</h2>
-          <div class="prose max-w-none font-nixie font-bold text-teal">
+          <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold font-origin text-yellow-300 mb-4 text-center sm:text-left">{{ section.title }}</h2>
+          <div class="prose max-w-none font-nixie font-bold text-teal text-center sm:text-left">
             <p class="font-bold">{{ section.content }}</p>
             <div v-if="section.phases" class="mt-4 space-y-4">
               <div class="my-4 relative">
