@@ -172,7 +172,7 @@ onUnmounted(() => {
           </section>
 
           <div class="mt-8 bg-card-blue bg-opacity-85 p-5 rounded-xl border-1 border-custom-blue">
-            <h3 class="font-origin text-yellow-300 text-sm md:text-base mb-4">Example of Miner run by a project called Pond - $20 Million USD</h3>
+            <h3 class="font-origin text-yellow-300 text-sm md:text-base mb-4">Example of Miner run by a project called Pond Dex - $20 Million USD generated.</h3>
             
             <MinerReport :report-data="minerReportData" class="mb-6" />
 
