@@ -7,24 +7,30 @@
           The Nebula Platform is the world's first decentralized finance platform for meme coins.
         </p>
       </section>
-
-      <!-- <section class="grid grid-cols-3 gap-4 mb-8">
-        <a v-for="link in quickLinks" :key="link.name" :href="link.url" class="p-4 bg-card-blue bg-opacity-75 border-2 border-custom-blue rounded-lg hover:shadow-lg text-white">
-          <h3 class="font-origin text-yellow-300">{{ link.name }}</h3>
-        </a>
-      </section> -->
-
+      <div class="my-8 relative">
+        <div class="h-px bg-gradient-to-r from-transparent via-yellow-300 to-transparent shadow-[0_0_15px_rgba(234,179,8,0.5)]"></div>
+      </div>
       <div class="space-y-8">
-        <section v-for="section in sections" :key="section.title">
+        <section v-for="(section, index) in sections" :key="section.title">
           <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold font-origin text-yellow-300 mb-4">{{ section.title }}</h2>
           <div class="prose max-w-none font-nixie font-bold text-teal">
             <p class="font-bold">{{ section.content }}</p>
             <div v-if="section.phases" class="mt-4 space-y-4">
-              <div v-for="phase in section.phases" :key="phase.title">
-                <h3 class="text-lg sm:text-xl md:text-2xl font-bold font-origin text-yellow-300">{{ phase.title }}</h3>
+              <div class="my-4 relative">
+                <div class="h-px w-3/4 mx-auto bg-gradient-to-r from-transparent via-yellow-300 to-transparent shadow-[0_0_10px_rgba(234,179,8,0.3)]"></div>
+              </div>
+              <div v-for="(phase, phaseIndex) in section.phases" :key="phase.title">
+                <h3 class="text-lg sm:text-xl md:text-2xl font-origin text-yellow-300">{{ phase.title }}</h3>
                 <p class="font-bold">{{ phase.content }}</p>
+                
+                <div v-if="phaseIndex !== section.phases.length - 1" class="my-4 relative">
+                  <div class="h-px w-3/4 mx-auto bg-gradient-to-r from-transparent via-yellow-300 to-transparent shadow-[0_0_10px_rgba(234,179,8,0.3)]"></div>
+                </div>
               </div>
             </div>
+          </div>
+          <div v-if="index !== sections.length - 1" class="my-8 relative">
+            <div class="h-px bg-gradient-to-r from-transparent via-yellow-300 to-transparent shadow-[0_0_15px_rgba(234,179,8,0.5)]"></div>
           </div>
         </section>
       </div>
@@ -33,18 +39,7 @@
 </template>
   
   <script setup>
-  const quickLinks = [
-    { name: 'Website', url: 'https://www.starsystemlabs.com' },
-    { name: 'Documentation', url: 'https://docs.starsystemlabs.com' },
-    { name: 'Whitepaper', url: 'https://github.com/star-system-labs/whitepaper/blob/main/Star-System-Labs-Whitepaper.pdf' },
-    { name: 'Nebula', url: 'https://nebula.starsystemlabs.com' },
-    { name: 'GitHub', url: 'https://github.com/star-system-labs' },
-    { name: 'X', url: 'https://x.com/StarSystem_Labss' },
-    { name: 'Telegram', url: 'https://t.me/starsystemlabs' },
-    { name: 'Discord', url: 'https://discord.com/invite/kH8B5SCSgy' },
-    { name: 'LinkTree', url: 'https://linktr.ee/starsystemlabs' }
-  ]
-  
+   
   const sections = [
     {
       title: 'In a Nutshell',
@@ -76,7 +71,7 @@
         },
         {
           title: 'Phase 4',
-          content: "Depoyment of the NFT system which include the v1 NFTs for free and the coming NFT game which utilizes the v2 and v3 NFTs to create yield boosting tools for your meme yield pools (MYP)."
+          content: "Depoyment of the NFT system which include the v1 NFTs for free and the coming NFT game which burns PPEPE to operate creating a deflationary system for the Nebula Platform as well as utilizing the v2 and v3 NFTs to create yield boosting tools for your meme yield pools (MYP)."
         }
       ]
     },
