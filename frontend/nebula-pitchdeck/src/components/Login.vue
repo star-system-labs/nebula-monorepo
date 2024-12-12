@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-start justify-center min-h-screen mt-5">
     <div class="bg-card-blue bg-opacity-75 p-8 rounded-xl border-2 border-custom-blue">
-      <h2 class="font-origin text-yellow-300 text-center mb-6">Login</h2>
+      <h2 class="font-origin text-yellow-300 text-center mb-6">Investor Login</h2>
       <form @submit.prevent="login">
         <div class="mb-4">
           <input
@@ -23,7 +23,7 @@
         </div>
         <button
           type="submit"
-          class="w-full bg-yellow-300 text-black font-bold py-2 rounded hover:scale-105 transition-transform"
+          class="w-full bg-yellow-300 text-black font-origin py-2 rounded hover:scale-105 transition-transform"
         >
           Login
         </button>
