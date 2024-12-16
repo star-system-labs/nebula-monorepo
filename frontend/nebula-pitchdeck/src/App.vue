@@ -5,6 +5,8 @@ import Title from './components/Title.vue'
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import MinerReport from './components/MinerReport.vue'
 import Login from './components/Login.vue'
+import ApexCharts from 'vue3-apexcharts';
+import balanceGrowthData from './assets/balance_growth.json';
 
 const quickLinks = [
     // { name: 'Website', url: 'https://starsystemlabs.com' },
@@ -30,80 +32,106 @@ const scrollToTop = () => {
 };
 
 const minerReportData = ref({
-  "Total ETH Received": 0,
-  "Total ETH Sent": 0,
-  "Total Gas Paid (ETH)": 0,
-  "Total Transactions": 0,
-  "Total ETH Received (USD)": 0,
-  "Total ETH Sent (USD)": 0,
-  "Total Gas Paid (USD)": 0,
+  totalETHReceived: '4,970.2335 ETH',
+  totalTransactions: '14,492',
+  ethReceivedUSD: '$19,481,278.07'
 });
 
-// const chartOptions = ref({
-//   chart: {
-//     height: 220,
-//     type: 'radialBar',
-//     animations: {
-//       enabled: true,
-//       speed: 800,
-//       animateGradually: {
-//         enabled: true,
-//         delay: 150
-//       }
-//     },
-//     dropShadow: {
-//       enabled: true,
-//       blur: 3,
-//       opacity: 0.2
-//     }
-//   },
-//   plotOptions: {
-//     radialBar: {
-//       hollow: {
-//         size: '55%',
-//         background: 'transparent'
-//       },
-//       track: {
-//         background: '#182233',
-//         strokeWidth: '97%',
-//         margin: 5
-//       },
-//       dataLabels: {
-//         name: {
-//           color: '#FFD700'
-//         },
-//         value: {
-//           color: '#5d9fa5'
-//         }
-//       }
-//     }
-//   },
-//   labels: ['Burn Rate'],
-//   tooltip: {
-//     enabled: true,
-//     style: {
-//       fontFamily: 'NixieOne, nixieone'
-//     },
-//     y: {
-//       formatter: () => '100% LP Tokens forever burned'
-//     }
-//   },
-//   colors: ['#0645a6'],
-//   stroke: {
-//     lineCap: 'round',
-//     width: 2
-//   },
-//   label: {
-//     colors: ['#007BFF'],
-//     style: {
-//       fontSize: '16px',
-//       fontWeight: 'bold',
-//       fontFamily: 'NixieOne, nixieone'
-//     }
-//   }
-// });
+const chartOptions = ref({
+  chart: {
+    type: 'line',
+    height: 220,
+    toolbar: { show: false },
+    animations: { enabled: true },
+    zoom: { enabled: false },
+  },
+  title: {
+    text: 'ETH Generated',
+    align: 'center',
+    style: {
+      fontSize: '14px',
+      fontFamily: 'NixieOne, nixieone',
+      color: '#FFD700',
+    },
+    responsive: [{
+      breakpoint: 480,
+      options: {
+        title: {
+          style: {
+            fontSize: '12px'
+          }
+        }
+      }
+    }]
+  },
+  xaxis: {
+    type: 'datetime',
+    min: new Date('2023-07-28').getTime(),
+    max: new Date('2023-08-15').getTime(),
+    title: {
+      text: 'Time',
+      style: { color: '#FFD700', fontFamily: 'NixieOne, nixieone' },
+    },
+    labels: {
+      style: { colors: '#FFD700', fontFamily: 'NixieOne, nixieone' },
+    },
+  },
+  yaxis: {
+    title: {
+      text: 'Balance (ETH)',
+      style: { color: '#FFD700', fontFamily: 'NixieOne, nixieone' },
+    },
+    labels: {
+      formatter: (value) => value.toFixed(2),
+      style: { colors: '#FFD700', fontFamily: 'NixieOne, nixieone' },
+    },
+  },
+  tooltip: {
+    theme: 'dark',
+    fillSeriesColor: false,
+    style: {
+      fontSize: '12px',
+      fontFamily: 'NixieOne, nixieone',
+    },
+    x: {
+      show: true,
+      format: 'dd MMM yyyy HH:mm',
+      formatter: undefined,
+    },
+    y: {
+      show: true,
+      title: {
+        formatter: (seriesName) => seriesName,
+      },
+      formatter: (value) => `${value.toFixed(4)} ETH`,
+    },
+    marker: {
+      show: true,
+    },
+    fixed: {
+      enabled: true,
+      position: 'topRight',
+      offsetX: 0,
+      offsetY: -30,
+    },
+  },
+  stroke: { curve: 'smooth', width: 2 },
+  colors: ['#0645a6'],
+});
 
-// const chartSeries = ref([100]);
+const chartSeries = ref([
+  {
+    name: 'Balance',
+    data: balanceGrowthData
+      .filter((_, index) => index % 15 === 0)
+      .map((item) => {
+        const timestamp = item.timestamp * 1000;
+        const balance = Number(item.y) / 1e18;
+        return [timestamp, balance];
+      })
+      .filter(([timestamp]) => timestamp <= new Date('2023-08-15').getTime()),
+  },
+]);
 
 const isAuthenticated = ref(localStorage.getItem('authenticated') === 'true');
 let logoutTimer = null;
@@ -131,6 +159,26 @@ const clearLogoutTimer = () => {
     clearTimeout(logoutTimer);
     logoutTimer = null;
   }
+};
+
+const isZoomedIn = ref(false);
+
+const toggleZoom = () => {
+  isZoomedIn.value = !isZoomedIn.value;
+  updateChartRange();
+};
+
+const updateChartRange = () => {
+  chartOptions.value = {
+    ...chartOptions.value,
+    xaxis: {
+      ...chartOptions.value.xaxis,
+      min: new Date('2023-07-28').getTime(),
+      max: isZoomedIn.value 
+        ? new Date('2023-07-30').getTime()
+        : new Date('2023-08-15').getTime(),
+    }
+  };
 };
 
 onMounted(() => {
@@ -172,14 +220,28 @@ onUnmounted(() => {
           </section>
 
           <div class="mt-8 bg-card-blue bg-opacity-85 p-5 rounded-xl border-1 border-custom-blue">
-            <h3 class="font-origin text-yellow-300 text-sm md:text-base mb-4">Example of Miner run by a project called Pond Dex - $20 Million USD generated.</h3>
+            <h3 class="font-origin text-yellow-300 text-sm md:text-base mb-4">
+              Example of a Miner run by a Pond Dex - $20 Million USD generated.
+            </h3>
             
-            <MinerReport :report-data="minerReportData" class="mb-6" />
-
-            <a href="https://etherscan.io/address/0xe0e907e3743715294c2a5f52618d278cbc006ced" 
-               class="inline-block bg-yellow-300 font-nixie text-black font-bold px-4 py-2 rounded-lg hover:scale-105 transition-transform mb-6">
-              View on Etherscan
-            </a>
+            <div class="flex flex-col md:flex-row mb-6">
+              <div class="md:w-1/2">
+                <MinerReport :report-data="minerReportData" />
+                <a href="https://etherscan.io/address/0xe0e907e3743715294c2a5f52618d278cbc006ced" 
+                   class="inline-block bg-yellow-300 font-nixie text-black font-bold px-4 py-2 rounded-lg hover:scale-105 transition-transform mt-4">
+                  View on Etherscan
+                </a>
+              </div>
+              <div class="md:w-1/2">
+                <apexchart type="line" :options="chartOptions" :series="chartSeries" height="220"></apexchart>
+                <div class="flex justify-center mt-2">
+                  <button @click="toggleZoom" 
+                          class="bg-yellow-300 font-nixie text-black font-bold px-4 py-2 rounded-lg hover:scale-105 hover:shadow-lg transition-transform hover-effect">
+                    {{ isZoomedIn ? 'Zoom Out' : 'Zoom In' }}
+                  </button>
+                </div>
+              </div>
+            </div>
 
             <hr class="border-t border-custom-blue my-6">
 
@@ -190,9 +252,6 @@ onUnmounted(() => {
                    class="text-yellow-300 font-nixie hover:underline">
                   Verify on Etherscan
                 </a>
-                <!-- <div class="w-32">
-                  <apexchart type="radialBar" :options="chartOptions" :series="chartSeries"></apexchart>
-                </div> -->
               </div>
             </div>
           </div>
