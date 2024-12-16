@@ -227,14 +227,16 @@ onUnmounted(() => {
             <div class="flex flex-col md:flex-row mb-6">
               <div class="md:w-1/2">
                 <MinerReport :report-data="minerReportData" />
-                <a href="https://etherscan.io/address/0xe0e907e3743715294c2a5f52618d278cbc006ced" 
-                   class="inline-block bg-yellow-300 font-nixie text-black font-bold px-4 py-2 rounded-lg hover:scale-105 transition-transform mt-4">
-                  View on Etherscan
-                </a>
+                <div class="flex justify-center mt-4 md:justify-start">
+                  <a href="https://etherscan.io/address/0xe0e907e3743715294c2a5f52618d278cbc006ced" 
+                     class="inline-block bg-yellow-300 font-nixie text-black font-bold px-4 py-2 mb-5 rounded-lg hover:scale-105 transition-transform">
+                    View on Etherscan
+                  </a>
+                </div>
               </div>
               <div class="md:w-1/2">
                 <apexchart type="line" :options="chartOptions" :series="chartSeries" height="220"></apexchart>
-                <div class="flex justify-center mt-2">
+                <div class="flex justify-center mt-4">
                   <button @click="toggleZoom" 
                           class="bg-yellow-300 font-nixie text-black font-bold px-4 py-2 rounded-lg hover:scale-105 hover:shadow-lg transition-transform hover-effect">
                     {{ isZoomedIn ? 'Zoom Out' : 'Zoom In' }}
@@ -246,8 +248,8 @@ onUnmounted(() => {
             <hr class="border-t border-custom-blue my-6">
 
             <div class="text-teal font-nixie">
-              <p class="mb-4 font-bold">PrimordialPePe LP is 100% burned - Market Liquidity is 100% safe</p>
-              <div class="flex items-center justify-between mb-4">
+              <p class="mb-4 font-bold text-center md:text-left">PrimordialPePe LP is 100% burned - Market Liquidity is 100% safe</p>
+              <div class="flex justify-center md:justify-start">
                 <a href="https://etherscan.io/tx/0x006151516eb21126db8ae98e8e02159e80423ff2a2aa31e6c766637c487f2b3f" 
                    class="text-yellow-300 font-nixie hover:underline">
                   Verify on Etherscan
