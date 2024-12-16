@@ -221,7 +221,7 @@ onUnmounted(() => {
 
           <div class="mt-8 bg-card-blue bg-opacity-85 p-5 rounded-xl border-1 border-custom-blue">
             <h3 class="font-origin text-yellow-300 text-sm md:text-base mb-4">
-              Example of a Miner run by a Pond Dex | ~$20 Million USD generated.
+              Example of a Miner run by a Pond Dex | $20 Million USD generated.
             </h3>
             
             <div class="flex flex-col md:flex-row mb-6">
