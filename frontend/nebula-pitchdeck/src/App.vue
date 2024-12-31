@@ -32,7 +32,7 @@ const scrollToTop = () => {
 };
 
 const minerReportData = ref({
-  totalETHReceived: '7,389.4548  ETH',
+  totalETHReceived: '7,389.4548 ETH',
   totalTransactions: '14,493',
   ethReceivedUSD: '$24,575,775.09'
 });
