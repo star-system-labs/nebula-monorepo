@@ -228,9 +228,10 @@ onUnmounted(() => {
               <div class="md:w-1/2">
                 <MinerReport :report-data="minerReportData" />
                 <div class="flex justify-center mt-4 md:justify-start">
-                  <a href="https://etherscan.io/address/0xe0e907e3743715294c2a5f52618d278cbc006ced" 
+                  <!-- <a href="https://etherscan.io/address/0xe0e907e3743715294c2a5f52618d278cbc006ced"  -->
+                  <a href="https://www.blockchain.com/explorer/addresses/eth/0xE0E907e3743715294c2A5f52618d278CBc006CEd"
                      class="inline-block bg-yellow-300 font-nixie text-black font-bold px-4 py-2 mb-5 rounded-lg hover:scale-105 transition-transform">
-                    View on Etherscan
+                    View Data
                   </a>
                 </div>
               </div>
