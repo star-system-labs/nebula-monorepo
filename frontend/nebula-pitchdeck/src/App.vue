@@ -230,8 +230,17 @@ onUnmounted(() => {
                 <div class="flex justify-center mt-4 md:justify-start">
                   <!-- <a href="https://etherscan.io/address/0xe0e907e3743715294c2a5f52618d278cbc006ced"  -->
                   <a href="https://www.blockchain.com/explorer/addresses/eth/0xE0E907e3743715294c2A5f52618d278CBc006CEd"
-                     class="inline-block bg-yellow-300 font-nixie text-black font-bold px-4 py-2 mb-5 rounded-lg hover:scale-105 transition-transform">
+                     class="inline-block bg-yellow-300 font-nixie text-black font-bold px-4 py-2 mb-2 rounded-lg hover:scale-105 transition-transform">
                     View Pond Miner Data
+                  </a>
+                </div>
+                <p class="text-xs text-yellow-100 italic mt-1 md:text-left">
+                  ** Disclaimer: The discrepancy between the MinerReport ETH number and the graph is due to internal transactions. This is due to limitations of my node - only full archive nodes can see internal txs and those take 20TB of space.
+                </p>
+                <div class="flex justify-center md:justify-start mt-2">
+                  <a href="https://etherscan.io/address/0xE0E907e3743715294c2A5f52618d278CBc006CEd#code" 
+                     class="inline-block bg-yellow-300 font-nixie text-black font-bold px-3 py-1 mb-2 rounded-lg hover:scale-105 transition-transform">
+                    Pond Miner Code
                   </a>
                 </div>
               </div>
