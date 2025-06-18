@@ -139,8 +139,8 @@ export default {
       localPpepeBalance: this.ppepeBalance,
       timeRemaining: null,
       timer: null,
-      launchDate: '2025-08-17T12:00:00',
-      endTime: new Date('2025-08-17T12:00:00').getTime(),
+      launchDate: '2025-08-02T04:00:00',
+      endTime: new Date('2025-08-02T04:00:00').getTime(),
     };
   },
   methods: {

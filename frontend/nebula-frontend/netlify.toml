@@ -1,11 +1,11 @@
 [build]
-  command = "npm run build"
-  publish = "widget-dist"
+  command = "npm run build:main"
+  publish = "dist"
   functions = "netlify/functions"
 
 [context.production]
-  command = "npm run build"
-  publish = "widget-dist"
+  command = "npm run build:main"
+  publish = "dist"
 
 [context.webcomponent]
   command = "npm run prepare:webcomponent"
