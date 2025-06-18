@@ -1863,5 +1863,3 @@ exports.handler = async (event, context) => {
     };
   }
 };
-
-// NOTE: Migration framework moved to separate script (scripts/bucket-migration.js)
