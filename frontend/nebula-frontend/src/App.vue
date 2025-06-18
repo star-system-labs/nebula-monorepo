@@ -81,7 +81,7 @@ import { ethers } from 'ethers';
 
 import widgetAnalytics from '@/utils/widgetAnalytics';
 import realDataValidator from '@/utils/realDataValidator';
-import liveDataTest from '@/utils/liveDataTest';
+//import liveDataTest from '@/utils/liveDataTest';
 
 const getWidgetAnalytics = () => {
   console.log('🔧 Using unified analytics system');
@@ -699,14 +699,14 @@ export default {
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 Initializing Real Data Validator...');
       window.realDataValidator = realDataValidator;
-      window.liveDataTest = liveDataTest;
+     // window.liveDataTest = liveDataTest;
       
       setTimeout(() => {
         realDataValidator.runComprehensiveValidation();
       }, 3000);
       
       setTimeout(() => {
-        liveDataTest.runComprehensiveTests();
+        //liveDataTest.runComprehensiveTests();
       }, 8000);
     }
     

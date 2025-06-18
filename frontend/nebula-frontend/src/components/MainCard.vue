@@ -203,6 +203,7 @@
         try {
           await this.$emit('amountChanged', amount);
         } catch (error) {
+          console.error('Amount change error:', error);
         }
       },
       setSelectedToken(token) {
