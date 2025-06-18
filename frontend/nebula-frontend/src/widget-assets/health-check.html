@@ -1,0 +1,3644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nebula Health Check</title>
+  <link rel="icon" type="image/x-icon" href="./assets/favicon.ico" />
+  <link rel="shortcut icon" type="image/x-icon" href="./assets/favicon.ico" />
+  
+  <script>
+    (function () {
+      class HealthCheckAnalytics {
+        constructor() {
+          this.metrics = [];
+          this.sessionId = `health-check-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          this.startTime = performance.now();
+          this.isReady = true;
+          
+          this.callQueue = [];
+          this.isFullyInitialized = true; 
+          this.retryAttempts = 0;
+          this.maxRetries = 5;
+          this.retryDelay = 100; 
+          
+          this.renderStages = new Map();
+          this.componentRenderTimes = new Map();
+          
+          console.log('✅ HealthCheckAnalytics initialized with sessionId:', this.sessionId);
+        }
+        
+        track(type, data = {}) {
+          const metric = {
+            type,
+            timestamp: Date.now(),
+            widget_id: 'health-check-widget',
+            url: window.location.href,
+            sessionId: this.sessionId,
+            ...data
+          };
+          
+          this.metrics.push(metric);
+          console.log('📊 Health Check Analytics tracked:', type, data);
+          
+          this.saveToLocalStorageWithRetry(metric);
+          
+          this.sendToAnalyticsAPI(metric);
+          
+          return metric;
+        }
+        
+        async sendToAnalyticsAPI(metric) {
+          try {
+            const response = await fetch('/.netlify/functions/analytics', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                metrics: [metric]
+              })
+            });
+            
+            if (!response.ok) {
+              console.warn('📊 Failed to send metric to analytics API:', response.status);
+            } else {
+              console.log('📊 Metric sent to analytics API successfully');
+            }
+          } catch (error) {
+            console.warn('📊 Error sending metric to analytics API:', error.message);
+          }
+        }
+        
+        saveToLocalStorageWithRetry(metric, attempt = 1) {
+          try {
+            const stored = JSON.parse(localStorage.getItem('health_check_metrics') || '[]');
+            stored.push(metric);
+            if (stored.length > 100) stored.splice(0, stored.length - 100);
+            localStorage.setItem('health_check_metrics', JSON.stringify(stored));
+          } catch (error) {
+            if (attempt <= this.maxRetries) {
+              console.warn(`⚠️ localStorage save failed, retrying... (attempt ${attempt}/${this.maxRetries})`);
+              setTimeout(() => {
+                this.saveToLocalStorageWithRetry(metric, attempt + 1);
+              }, this.retryDelay * attempt); 
+            } else {
+              console.error('❌ Failed to store health check metric after', this.maxRetries, 'attempts:', error);
+            }
+          }
+        }
+        
+        trackCustom(event, data) {
+          console.log('🎯 trackCustom called:', event, data);
+          
+          if (data && data.type && ['load', 'render', 'wallet_connect', 'interaction', 'rpc'].includes(data.type)) {
+            this.track(data.type, { event_name: event, ...data });
+          } else {
+          this.track('custom', { event_name: event, ...data });
+          }
+        }
+
+        trackLoad(success, loadTime) {
+          return this.track('load', { success, load_time: loadTime });
+        }
+
+        trackRender(renderTime) {
+          return this.track('render', { render_time: renderTime, success: true });
+        }
+
+        trackLoadComplete() {
+          const loadTime = performance.now() - this.startTime;
+          this.track('load', { success: true, load_time: loadTime });
+          console.log('✅ Widget load completed in', loadTime.toFixed(2), 'ms');
+        }
+
+        trackRenderComplete() {
+          const renderTime = performance.now() - this.startTime;
+          this.track('render', { render_time: renderTime, success: true });
+          console.log('✅ Widget render completed in', renderTime.toFixed(2), 'ms');
+        }
+
+        trackWalletConnect(success, walletType, error) {
+          this.track('wallet_connect', { success, wallet_type: walletType, error });
+        }
+
+        trackInteraction(action, success, error) {
+          return this.track('interaction', { action, success, error });
+        }
+
+        trackRPC(method, duration, success, error) {
+          return this.track('rpc', { method, duration, success, error });
+        }
+
+        trackRenderStage(stage, timing, componentName = null) {
+          console.log(`📊 RENDER STAGE: ${stage} - ${timing}ms - ${componentName || 'global'}`);
+          
+          const stageData = {
+            stage,
+            timing: Math.round(timing),
+            componentName,
+            sessionId: this.sessionId,
+            timestamp: Date.now()
+          };
+          this.renderStages.set(`${stage}_${componentName || 'global'}`, stageData);
+          
+          this.track('render', {
+            stage,
+            timing: Math.round(timing),
+            render_time: Math.round(timing),
+            duration: Math.round(timing),
+            component_name: componentName,
+            render_stage: stage
+          });
+        }
+
+        trackComponentRender(componentName, renderTime, props = {}) {
+          console.log(`📊 COMPONENT RENDER: ${componentName} - ${renderTime}ms`);
+          
+          this.componentRenderTimes.set(componentName, renderTime);
+          
+          this.track('render', {
+            component_name: componentName,
+            render_time: Math.round(renderTime),
+            duration: Math.round(renderTime),
+            timing: Math.round(renderTime),
+            type: 'component_render'
+          });
+        }
+
+        get loadStartTime() {
+          return this.startTime;
+        }
+
+        flush() {
+          console.log('📊 Health Check Analytics flush - collected', this.metrics.length, 'metrics');
+          return Promise.resolve();
+        }
+
+        getMetrics() {
+          return this.metrics;
+        }
+        
+        getQueueStatus() {
+          return {
+            isFullyInitialized: true, 
+            queueSize: 0, 
+            totalMetrics: this.metrics.length
+          };
+        }
+      }
+      
+      window.analyticsInitializationPromise = new Promise((resolve) => {
+      const healthAnalyticsInstance = new HealthCheckAnalytics();
+      window.healthCheckAnalytics = healthAnalyticsInstance;
+      
+      Object.defineProperty(window, 'fn', {
+        get: function() {
+          healthAnalyticsInstance._protected = true;
+          healthAnalyticsInstance._source = 'health-check-analytics-direct';
+          return healthAnalyticsInstance;
+        },
+        set: function(newValue) {
+            if (newValue !== healthAnalyticsInstance && !newValue._isHealthCheckAnalytics) {
+          console.warn('⚠️ ATTEMPTED OVERRIDE: Something tried to overwrite window.fn');
+          console.warn('  > Current fn object:', window.healthCheckAnalytics);
+          console.warn('  > Blocked incoming object:', newValue);
+          console.warn('  > Stack trace:', new Error().stack);
+            }
+        },
+        configurable: false,
+        enumerable: true
+      });
+      
+      window.nebulaAnalytics = window.fn;
+      window.widgetAnalytics = window.fn;
+      
+      try { 
+        if (typeof self !== 'undefined') self.fn = window.fn; 
+      } catch {}
+      
+        window.analyticsInitialized = true;
+        resolve(healthAnalyticsInstance);
+      });
+      
+      window.analyticsInitializationPromise.then(() => {
+      const testResult = (function() {
+        try {
+          const original = window.fn;
+            
+            const testOverride = { test: 'override attempt', _isTest: true };
+            window.fn = testOverride;
+            
+          const afterAttempt = window.fn;
+          return {
+            protected: original === afterAttempt && afterAttempt._protected === true,
+            originalSource: original._source,
+            afterAttemptSource: afterAttempt._source || 'unknown'
+          };
+        } catch (e) {
+          return { protected: true, error: e.message };
+        }
+      })();
+      
+      console.log('🔒 Override protection test result:', testResult);
+      console.log('✅ Analytics facade active and direct:');
+      console.log('  > typeof window.fn:', typeof window.fn);
+      console.log('  > typeof window.fn.trackCustom:', typeof window.fn?.trackCustom);
+      console.log('  > window.fn is protected:', window.fn?._protected);
+      console.log('  > window.fn source:', window.fn?._source);
+      });
+      
+    })(); 
+  </script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      min-height: 100vh;
+      background: #000;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+      transition: background 0.5s ease;
+    }
+    
+    .widget-container {
+      all: initial;
+      width: 100%;
+      height: 825px;
+      border: 2px solid #475569;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      display: block;
+    }
+    
+    .widget-container {
+      font-family: initial;
+      line-height: initial;
+    }
+    
+    body.video-off {
+      background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+    }
+    
+    #bgVideo {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -2;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+    
+    #bgVideo.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+    
+    .video-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      /* background: rgba(0, 0, 0, 0.7); 
+      background: rgba(10, 14, 26, 0.85); */
+      z-index: -1;
+      pointer-events: none;
+    }
+    
+    .content-wrapper {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding: 40px 20px;
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 16px;
+      border: 1px solid #334155;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #22c55e;
+      margin-right: 8px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    h1 {
+      font-size: 2.5em;
+      color: #fde047;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      font-size: 1.2em;
+      color: #94a3b8;
+      margin-bottom: 20px;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .status-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .status-card h3 {
+      color: #fde047;
+      margin-bottom: 10px;
+    }
+
+    .status-value {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #22c55e;
+    }
+
+    .widget-test {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 40px;
+    }
+
+    .widget-test h2 {
+      color: #fde047;
+      margin-bottom: 20px;
+      font-size: 1.8em;
+      font-family: serif !important;
+    }
+
+    .embed-instructions {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 40px;
+    }
+
+    .embed-instructions h2 {
+      color: #fde047;
+      margin-bottom: 20px;
+      font-size: 1.8em;
+    }
+
+    .code-block {
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 15px 0;
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .code-block pre {
+      color: #e2e8f0;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.3s;
+    }
+
+    .copy-btn:hover {
+      background: #2563eb;
+    }
+
+    .copy-btn.copied {
+      background: #22c55e;
+    }
+
+    .tab-container {
+      margin-bottom: 20px;
+    }
+
+    .tab-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .tab-btn {
+      background: #374151;
+      color: #e5e7eb;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .tab-btn.active {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .instructions-list {
+      color: #cbd5e1;
+      margin-bottom: 20px;
+    }
+
+    .instructions-list li {
+      margin: 10px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .instructions-list li:before {
+      content: "→";
+      color: #fde047;
+      font-weight: bold;
+      position: absolute;
+      left: 0;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 30px;
+      color: #64748b;
+      border-top: 1px solid #334155;
+    }
+
+    .bgvideo-toggle-btn {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 100;
+      background: rgba(30, 41, 59, 0.85);
+      color: #fde047;
+      border: 1px solid #334155;
+      border-radius: 24px;
+      padding: 10px 22px 10px 16px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 2px 8px 0 rgba(0,0,0,0.12);
+      transition: background 0.2s, color 0.2s;
+      user-select: none;
+    }
+    
+    .bgvideo-toggle-btn[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .bgvideo-switch {
+      width: 36px;
+      height: 20px;
+      background: #334155;
+      border-radius: 12px;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .bgvideo-switch.on {
+      background: #22c55e;
+    }
+    
+    .bgvideo-knob {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: #fde047;
+      border-radius: 50%;
+      transition: left 0.2s;
+    }
+    
+    .bgvideo-switch.on .bgvideo-knob {
+      left: 18px;
+      background: #fff;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+      
+      h1 {
+        font-size: 2em;
+      }
+      
+      .widget-container {
+        height: 500px;
+      }
+      
+      .bgvideo-toggle-btn {
+        top: 12px;
+        right: 12px;
+        font-size: 0.95em;
+        padding: 8px 16px 8px 10px;
+      }
+    }
+
+    /* Metrics Dashboard Styles */
+    .metrics-dashboard {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 40px;
+    }
+
+    .metrics-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .metrics-header h2 {
+      color: #fde047;
+      font-size: 1.8em;
+      margin: 0;
+    }
+
+    .time-range-selector {
+      display: flex;
+      gap: 8px;
+      background: rgba(30, 41, 59, 0.5);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+
+    .time-range-btn {
+      background: transparent;
+      color: #94a3b8;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: all 0.3s;
+    }
+
+    .time-range-btn:hover {
+      background: rgba(59, 130, 246, 0.2);
+      color: #e2e8f0;
+    }
+
+    .time-range-btn.active {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .metrics-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 25px;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 10px;
+    }
+
+    .metric-tab {
+      background: transparent;
+      color: #94a3b8;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .metric-tab:hover {
+      color: #e2e8f0;
+    }
+
+    .metric-tab.active {
+      color: #fde047;
+    }
+
+    .metric-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -11px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #fde047;
+    }
+
+    .metric-content {
+      display: none;
+    }
+
+    .metric-content.active {
+      display: block;
+    }
+
+    .metric-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .summary-card {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .summary-label {
+      color: #94a3b8;
+      font-size: 0.9em;
+      margin-bottom: 5px;
+    }
+
+    .summary-value {
+      color: #fde047;
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .summary-change {
+      font-size: 0.85em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .summary-change.positive {
+      color: #22c55e;
+    }
+
+    .summary-change.negative {
+      color: #ef4444;
+    }
+
+    .chart-container {
+      background: rgba(30, 41, 59, 0.3);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      position: relative;
+      min-height: 300px;
+    }
+
+    .chart-title {
+      color: #e2e8f0;
+      font-size: 1.1em;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    canvas {
+      max-height: 300px;
+    }
+
+    @media (max-width: 768px) {
+      .metrics-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .time-range-selector {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .metrics-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .metric-tab {
+        white-space: nowrap;
+      }
+
+      canvas {
+        max-height: 250px;
+      }
+    }
+
+    /* Local font overrides for health-check widget test */
+    @font-face {
+      font-family: 'NixieOne';
+      src: url('/assets/fonts/NixieOne.ttf') format('truetype');
+      font-display: swap;
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'OriginTech';
+      src: url('/assets/fonts/OriginTech.ttf') format('truetype');
+      font-display: swap;
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'SpaceAge';
+      src: url('/assets/fonts/spaceage.ttf') format('truetype');
+      font-display: swap;
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'Tesla';
+      src: url('/assets/fonts/Tesla.ttf') format('truetype');
+      font-display: swap;
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'Dune';
+      src: url('/assets/fonts/Dune.ttf') format('truetype');
+      font-display: swap;
+      font-weight: normal;
+      font-style: normal;
+    }
+    
+    @font-face {
+      font-family: 'OriginTech';
+      src: url('./widget-dist/fonts/OriginTech.ttf') format('truetype');
+      font-display: swap;
+      font-weight: normal;
+      font-style: normal;
+    }
+    
+    @font-face {
+      font-family: 'NixieOne';
+      src: url('./widget-dist/fonts/NixieOne.ttf') format('truetype');
+      font-display: swap;
+      font-weight: normal;
+      font-style: normal;
+    }
+    
+    body:not(.widget-container),
+    .header, .status-grid, .metrics-dashboard, .embed-instructions {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .widget-container {
+      all: unset;
+      display: block;
+      width: 100%;
+      height: 825px;
+      border: 2px solid #475569;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+    
+    .widget-container *,
+    .widget-container nebula-app,
+    .widget-container nebula-app * {
+      font-family: inherit;
+    }
+    
+    .widget-container .font-origin,
+    .widget-container nebula-app .font-origin,
+    .widget-container [class*="font-origin"] {
+      font-family: OriginTech, serif !important;
+    }
+    
+    .widget-container .font-nixie,
+    .widget-container nebula-app .font-nixie,
+    .widget-container [class*="font-nixie"] {
+      font-family: NixieOne, serif !important;
+    }
+    
+    pre, code, .code-block, .code-block pre, .code-block code,
+    [id*="code"], [class*="code"], samp, kbd, tt, var {
+      font-family: 'Courier New', 'Monaco', 'Menlo', 'Consolas', monospace !important;
+    }
+    
+    .code-block * {
+      font-family: 'Courier New', 'Monaco', 'Menlo', 'Consolas', monospace !important;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <video id="bgVideo" autoplay muted loop playsinline>
+    <source src="media/POC.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+  
+  <div class="video-overlay"></div>
+  
+  <button id="toggleVideoBtn" class="bgvideo-toggle-btn" type="button">
+    <span>BG</span>
+    <span class="bgvideo-switch" id="toggleSwitch">
+      <span class="bgvideo-knob"></span>
+    </span>
+  </button>
+
+  <div class="content-wrapper">
+    <div class="container">
+      <div class="header">
+        <h1><span class="status-indicator"></span>Nebula</h1>
+        <p class="subtitle">Health Check & Integration Guide</p>
+        <p id="status-text">All systems operational</p>
+      </div>
+
+      <div class="status-grid">
+        <div class="status-card">
+          <h3>Widget Status</h3>
+          <div class="status-value" id="widget-status">Loading...</div>
+        </div>
+        <div class="status-card">
+          <h3>CDN Status</h3>
+          <div class="status-value" id="cdn-status">Loading...</div>
+        </div>
+        <div class="status-card">
+          <h3>Last Updated</h3>
+          <div class="status-value" id="last-updated">Loading...</div>
+        </div>
+        <div class="status-card">
+          <h3>Version</h3>
+          <div class="status-value" id="version">v0.1.5</div>
+        </div>
+      </div>
+
+      <div class="cdn-metrics-section" style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h2 style="color: #fde047; margin: 0; font-size: 1.3em;">🌐 CDN Performance Metrics</h2>
+          <button onclick="cdnMonitor.checkCDNHealth()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em;">Refresh CDN Status</button>
+        </div>
+        
+        <div class="cdn-metrics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+          <div class="cdn-metric-card" style="background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 8px; padding: 15px;">
+            <h4 style="color: #94a3b8; margin: 0 0 8px 0; font-size: 0.9em;">Overall Availability</h4>
+            <div id="cdn-availability" style="color: #22c55e; font-size: 1.4em; font-weight: 600;">--%</div>
+          </div>
+          <div class="cdn-metric-card" style="background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 8px; padding: 15px;">
+            <h4 style="color: #94a3b8; margin: 0 0 8px 0; font-size: 0.9em;">Avg Response Time</h4>
+            <div id="cdn-response-time" style="color: #22c55e; font-size: 1.4em; font-weight: 600;">--ms</div>
+          </div>
+          <div class="cdn-metric-card" style="background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 8px; padding: 15px;">
+            <h4 style="color: #94a3b8; margin: 0 0 8px 0; font-size: 0.9em;">Cache Hit Rate</h4>
+            <div id="cdn-cache-rate" style="color: #22c55e; font-size: 1.4em; font-weight: 600;">--%</div>
+          </div>
+          <div class="cdn-metric-card" style="background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 8px; padding: 15px;">
+            <h4 style="color: #94a3b8; margin: 0 0 8px 0; font-size: 0.9em;">Last Check</h4>
+            <div id="cdn-last-check" style="color: #94a3b8; font-size: 1.1em; font-weight: 500;">Never</div>
+          </div>
+        </div>
+
+        <div class="cdn-endpoints" style="background: rgba(30, 41, 59, 0.5); border-radius: 8px; padding: 15px;">
+          <h4 style="color: #cbd5e1; margin: 0 0 15px 0; font-size: 1em;">Endpoint Status</h4>
+          <div class="cdn-endpoints-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+            <div class="cdn-endpoint" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(51, 65, 85, 0.5); border-radius: 6px;">
+              <span style="color: #e2e8f0; font-size: 0.9em;">Widget JS</span>
+              <span id="cdn-widget-js" style="color: #94a3b8; font-size: 0.85em;">checking...</span>
+            </div>
+            <div class="cdn-endpoint" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(51, 65, 85, 0.5); border-radius: 6px;">
+              <span style="color: #e2e8f0; font-size: 0.9em;">Widget CSS</span>
+              <span id="cdn-widget-css" style="color: #94a3b8; font-size: 0.85em;">checking...</span>
+            </div>
+            <div class="cdn-endpoint" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(51, 65, 85, 0.5); border-radius: 6px;">
+              <span style="color: #e2e8f0; font-size: 0.9em;">Analytics API</span>
+              <span id="cdn-analytics-api" style="color: #94a3b8; font-size: 0.85em;">checking...</span>
+            </div>
+            <div class="cdn-endpoint" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(51, 65, 85, 0.5); border-radius: 6px;">
+              <span style="color: #e2e8f0; font-size: 0.9em;">Health Check</span>
+              <span id="cdn-health-check" style="color: #94a3b8; font-size: 0.85em;">checking...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics-dashboard">
+        <div class="metrics-header">
+          <h2>📊 Performance Metrics</h2>
+          <div style="display: flex; align-items: center; gap: 20px;">
+            <span style="background: #f59e0b; color: #1e293b; padding: 4px 12px; border-radius: 6px; font-size: 0.9em; font-weight: 600;">MOCK DATA</span>
+            <div class="time-range-selector">
+              <button class="time-range-btn active" data-range="1h">1H</button>
+              <button class="time-range-btn" data-range="24h">24H</button>
+              <button class="time-range-btn" data-range="7d">7D</button>
+              <button class="time-range-btn" data-range="30d">30D</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="metrics-tabs">
+          <button class="metric-tab active" data-metric="performance">Performance</button>
+          <button class="metric-tab" data-metric="reliability">Reliability</button>
+          <button class="metric-tab" data-metric="usage">Usage</button>
+        </div>
+
+        <!-- Performance Tab -->
+        <div class="metric-content active" id="performance-content">
+          <div class="metric-summary">
+            <div class="summary-card">
+              <div class="summary-label">Load Success Rate</div>
+              <div class="summary-value">98.5%</div>
+              <div class="summary-change positive">↑ 2.3%</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Avg. Time to Render</div>
+              <div class="summary-value">342ms</div>
+              <div class="summary-change positive">↓ 15ms</div>
+            </div>
+          </div>
+          
+          <div class="chart-container">
+            <div class="chart-title">
+              Widget Load Success Rate
+              <span id="loadSuccessDataSource" class="data-source-indicator" style="font-size: 0.7em; margin-left: 10px; padding: 2px 6px; border-radius: 4px; background: #22c55e; color: white;">REAL DATA</span>
+            </div>
+            <canvas id="loadSuccessChart"></canvas>
+          </div>
+          
+          <div class="chart-container">
+            <div class="chart-title">
+              Time to Render Distribution
+              <span id="renderTimeDataSource" class="data-source-indicator" style="font-size: 0.7em; margin-left: 10px; padding: 2px 6px; border-radius: 4px; background: #22c55e; color: white;">REAL DATA</span>
+            </div>
+            <canvas id="renderTimeChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Reliability Tab -->
+        <div class="metric-content" id="reliability-content">
+          <div class="metric-summary">
+            <div class="summary-card">
+              <div class="summary-label">Wallet Connect Success</div>
+              <div class="summary-value">87.2%</div>
+              <div class="summary-change negative">↓ 1.5%</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Interaction Errors</div>
+              <div class="summary-value">23</div>
+              <div class="summary-change positive">↓ 8</div>
+            </div>
+          </div>
+          
+          <div class="chart-container">
+            <div class="chart-title">
+              Wallet Connection Success/Failure Rate
+              <span id="walletDataSource" class="data-source-indicator" style="font-size: 0.7em; margin-left: 10px; padding: 2px 6px; border-radius: 4px; background: #f59e0b; color: white;">MIXED DATA</span>
+            </div>
+            <canvas id="walletConnectChart"></canvas>
+          </div>
+          
+          <div class="chart-container">
+            <div class="chart-title">
+              Interaction Failures by Type
+              <span id="interactionDataSource" class="data-source-indicator" style="font-size: 0.7em; margin-left: 10px; padding: 2px 6px; border-radius: 4px; background: #22c55e; color: white;">REAL DATA</span>
+            </div>
+            <canvas id="interactionFailuresChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Usage Tab -->
+        <div class="metric-content" id="usage-content">
+          <div class="metric-summary">
+            <div class="summary-card">
+              <div class="summary-label">Total Widget Loads</div>
+              <div class="summary-value">12.5K</div>
+              <div class="summary-change positive">↑ 18%</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Avg. RPC Latency</div>
+              <div class="summary-value">89ms</div>
+              <div class="summary-change positive">↓ 12ms</div>
+            </div>
+          </div>
+          
+          <div class="chart-container">
+            <div class="chart-title">
+              User Volume Over Time
+              <span id="userVolumeDataSource" class="data-source-indicator" style="font-size: 0.7em; margin-left: 10px; padding: 2px 6px; border-radius: 4px; background: #ef4444; color: white;">NO DATA</span>
+            </div>
+            <canvas id="userVolumeChart"></canvas>
+          </div>
+          
+          <div class="chart-container">
+            <div class="chart-title">
+              RPC/API Latency (p50/p95)
+              <span id="rpcLatencyDataSource" class="data-source-indicator" style="font-size: 0.7em; margin-left: 10px; padding: 2px 6px; border-radius: 4px; background: #ef4444; color: white;">NO DATA</span>
+            </div>
+            <canvas id="rpcLatencyChart"></canvas>
+          </div>
+          
+          <div class="chart-container">
+            <div class="chart-title">
+              CDN Performance & Availability
+              <span id="cdnDataSource" class="data-source-indicator" style="font-size: 0.7em; margin-left: 10px; padding: 2px 6px; border-radius: 4px; background: #ef4444; color: white;">NO DATA</span>
+            </div>
+            <canvas id="cdnPerformanceChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 40px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+          <div>
+            <h3 style="color: #fde047; margin: 0 0 5px 0; font-size: 1.2em;">🔍 Health Check Debug Panel</h3>
+            <p style="color: #94a3b8; margin: 0; font-size: 0.9em;">
+              Local metrics collected: <span id="debug-metrics-count" style="color: #22c55e;">0</span> | 
+              Render events: <span id="debug-render-count" style="color: #22c55e;">0</span>
+            </p>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button onclick="viewDebugMetrics()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">View Debug Data</button>
+            <button onclick="clearDebugMetrics()" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Clear Debug</button>
+            <button onclick="testRenderTracking()" style="background: #22c55e; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Test Render</button>
+          </div>
+        </div>
+        <div id="debug-metrics-viewer" style="display: none; margin-top: 20px; background: #1e293b; border-radius: 8px; padding: 15px; max-height: 400px; overflow-y: auto;">
+          <pre id="debug-metrics-data" style="color: #e2e8f0; font-size: 0.85em; margin: 0;"></pre>
+        </div>
+      </div> -->
+
+      <div class="widget-test">
+        <h2>🧪 Live Widget Test</h2>
+        <p style="margin-bottom: 20px; color: #cbd5e1;"></p>
+        <div class="widget-container" id="widget-container">
+          <!-- Widget will load here -->
+        </div>
+      </div>
+
+      <div class="embed-instructions">
+        <h2>📋 Integration Instructions</h2>
+        
+        <div class="tab-container">
+          <div class="tab-buttons">
+            <button class="tab-btn active" onclick="showTab('basic')">Basic Embed</button>
+            <button class="tab-btn" onclick="showTab('webflow')">Webflow</button>
+            <button class="tab-btn" onclick="showTab('wordpress')">WordPress</button>
+            <button class="tab-btn" onclick="showTab('react')">React/Vue</button>
+          </div>
+
+          <div id="basic" class="tab-content active">
+            <h3 style="color: #fde047; margin-bottom: 15px;">Basic HTML Embed</h3>
+            <ol class="instructions-list">
+              <li>Copy the embed code below</li>
+              <li>Paste it into your HTML where you want the widget to appear</li>
+              <li>Adjust the height and width as needed</li>
+            </ol>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode('basic-code')">Copy</button>
+              <pre id="basic-code"><!-- Nebula Widget Embed -->
+&lt;link rel="stylesheet" href="https://widget.starsystemlabs.com/widget-css/app.css"&gt;
+&lt;script&gt;window.isNebulaWebComponent = true;&lt;/script&gt;
+&lt;script src="https://widget.starsystemlabs.com/widget-js/chunk-vendors.js"&gt;&lt;/script&gt;
+&lt;script src="https://widget.starsystemlabs.com/widget-js/app.js"&gt;&lt;/script&gt;
+&lt;nebula-app style="display:block; width:100%; height:825 px;"&gt;&lt;/nebula-app&gt;</pre>
+            </div>
+          </div>
+
+          <div id="webflow" class="tab-content">
+            <h3 style="color: #fde047; margin-bottom: 15px;">Webflow Integration</h3>
+            <ol class="instructions-list">
+              <li>Go to your Webflow project settings</li>
+              <li>Navigate to the "Custom Code" section</li>
+              <li>Paste the code below in the "Head Code" section</li>
+              <li>Add an HTML Embed element where you want the widget</li>
+              <li>Paste the widget tag in the HTML Embed element</li>
+            </ol>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode('webflow-head')">Copy Head Code</button>
+              <pre id="webflow-head"><!-- Add to Webflow Head Code -->
+&lt;link rel="stylesheet" href="https://widget.starsystemlabs.com/widget-css/app.css"&gt;
+&lt;script&gt;window.isNebulaWebComponent = true;&lt;/script&gt;
+&lt;script src="https://widget.starsystemlabs.com/widget-js/chunk-vendors.js"&gt;&lt;/script&gt;
+&lt;script src="https://widget.starsystemlabs.com/widget-js/app.js"&gt;&lt;/script&gt;</pre>
+            </div>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode('webflow-embed')">Copy Embed Code</button>
+              <pre id="webflow-embed"><!-- Add to HTML Embed Element -->
+&lt;nebula-app style="display:block; width:100%; height:825 px;"&gt;&lt;/nebula-app&gt;</pre>
+            </div>
+          </div>
+
+          <div id="wordpress" class="tab-content">
+            <h3 style="color: #fde047; margin-bottom: 15px;">WordPress Integration</h3>
+            <ol class="instructions-list">
+              <li>Go to your WordPress admin dashboard</li>
+              <li>Navigate to Appearance → Theme Editor</li>
+              <li>Edit your theme's header.php file</li>
+              <li>Add the header code before the closing &lt;/head&gt; tag</li>
+              <li>Use a Custom HTML block to add the widget tag</li>
+            </ol>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode('wp-header')">Copy Header Code</button>
+              <pre id="wp-header">/* Add to WordPress header.php before &lt;/head&gt; */
+&lt;link rel="stylesheet" href="https://widget.starsystemlabs.com/widget-css/app.css"&gt;
+&lt;script&gt;window.isNebulaWebComponent = true;&lt;/script&gt;
+&lt;script src="https://widget.starsystemlabs.com/widget-js/chunk-vendors.js"&gt;&lt;/script&gt;
+&lt;script src="https://widget.starsystemlabs.com/widget-js/app.js"&gt;&lt;/script&gt;</pre>
+            </div>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode('wp-widget')">Copy Widget Code</button>
+              <pre id="wp-widget">/* Add to Custom HTML Block */
+&lt;nebula-app style="display:block; width:100%; height:825 px;"&gt;&lt;/nebula-app&gt;</pre>
+            </div>
+          </div>
+
+          <div id="react" class="tab-content">
+            <h3 style="color: #fde047; margin-bottom: 15px;">React/Vue Integration</h3>
+            <ol class="instructions-list">
+              <li>Add the script tags to your index.html</li>
+              <li>Declare the custom element in your component</li>
+              <li>Use the nebula-app tag in your JSX/template</li>
+            </ol>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode('react-html')">Copy index.html</button>
+              <pre id="react-html">/* Add to public/index.html in &lt;head&gt; */
+&lt;link rel="stylesheet" href="https://widget.starsystemlabs.com/widget-css/app.css"&gt;
+&lt;script&gt;window.isNebulaWebComponent = true;&lt;/script&gt;
+&lt;script src="https://widget.starsystemlabs.com/widget-js/chunk-vendors.js"&gt;&lt;/script&gt;
+&lt;script src="https://widget.starsystemlabs.com/widget-js/app.js"&gt;&lt;/script&gt;</pre>
+            </div>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode('react-component')">Copy Component</button>
+              <pre id="react-component">
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'nebula-app': any;
+    }
+  }
+}
+
+function MyComponent() {
+  return (
+    &lt;nebula-app style={{display: 'block', width: '100%', height: '825 px'}}&gt;
+    &lt;/nebula-app&gt;
+  );}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>Nebula Health Check | Star System Labs</p>
+        <p>For support, visit our <a href="https://github.com/star-system-labs" style="color: #3b82f6;">GitHub</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const bgVideo = document.getElementById('bgVideo');
+    const toggleBtn = document.getElementById('toggleVideoBtn');
+    const toggleSwitch = document.getElementById('toggleSwitch');
+    const STORAGE_KEY = 'nebulaWidgetBgVideo';
+
+    function isMobile() {
+      return window.innerWidth < 768 || /Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+    }
+
+    function setToggleState(on, persist=true) {
+      if (on) {
+        bgVideo.classList.remove('hidden');
+        toggleSwitch.classList.add('on');
+        document.body.classList.remove('video-off');
+      } else {
+        bgVideo.classList.add('hidden');
+        toggleSwitch.classList.remove('on');
+        document.body.classList.add('video-off');
+      }
+      if (persist) {
+        localStorage.setItem(STORAGE_KEY, on ? 'on' : 'off');
+      }
+    }
+
+    function getInitialState() {
+      if (isMobile()) return false;
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === 'on') return true;
+      if (saved === 'off') return false;
+      return true;
+    }
+
+    function updateToggleBtn() {
+      if (isMobile()) {
+        toggleBtn.disabled = true;
+        toggleBtn.title = 'Disabled on mobile for performance';
+      } else {
+        toggleBtn.disabled = false;
+        toggleBtn.title = '';
+      }
+    }
+
+    let videoOn = getInitialState();
+    setToggleState(videoOn, false);
+    updateToggleBtn();
+
+    toggleBtn.addEventListener('click', function() {
+      if (isMobile()) return;
+      videoOn = !videoOn;
+      setToggleState(videoOn);
+    });
+
+    window.addEventListener('resize', function() {
+      updateToggleBtn();
+      if (isMobile()) {
+        setToggleState(false);
+      } else {
+        setToggleState(videoOn, false);
+      }
+    });
+
+    class CDNHealthMonitor {
+      constructor() {
+        this.endpoints = [
+          { name: 'Widget JS', url: 'https://widget.starsystemlabs.com/widget-js/app.js', type: 'asset' },
+          { name: 'Widget CSS', url: 'https://widget.starsystemlabs.com/widget-css/app.css', type: 'asset' },
+          { name: 'Analytics API', url: 'https://widget.starsystemlabs.com/.netlify/functions/analytics', type: 'api' },
+          { name: 'Health Check', url: 'https://widget.starsystemlabs.com/', type: 'page' }
+        ];
+        this.metrics = {
+          responseTime: 0,
+          cacheHitRate: 0,
+          availability: 0,
+          lastCheck: null,
+          errors: []
+        };
+      }
+
+      async checkCDNHealth() {
+        console.log('🔍: Starting comprehensive CDN health check...');
+        const results = [];
+        const startTime = performance.now();
+
+        for (const endpoint of this.endpoints) {
+          try {
+            const result = await this.testEndpoint(endpoint);
+            results.push(result);
+            console.log(`✅ CDN Check: ${endpoint.name} - ${result.status} (${result.responseTime}ms)`);
+          } catch (error) {
+            const errorResult = {
+              ...endpoint,
+              status: 'failed',
+              responseTime: 0,
+              cacheStatus: 'error',
+              error: error.message
+            };
+            results.push(errorResult);
+            console.error(`❌ CDN Check: ${endpoint.name} - Failed:`, error.message);
+          }
+        }
+
+                 const totalTime = performance.now() - startTime;
+         this.updateMetrics(results, totalTime);
+         this.updateUI(results);
+         
+         if (typeof trackCDNMetrics === 'function') {
+           trackCDNMetrics(results);
+         }
+         
+         console.log('📊: CDN health check completed', {
+           totalTime: `${totalTime.toFixed(2)}ms`,
+           availability: `${this.metrics.availability}%`,
+           cacheHitRate: `${this.metrics.cacheHitRate}%`
+         });
+
+         return results;
+      }
+
+      async testEndpoint(endpoint) {
+        const startTime = performance.now();
+        
+        try {
+          const response = await fetch(endpoint.url, { 
+            method: 'HEAD',
+            cache: 'no-cache',
+            headers: {
+              'X-CDN-Health-Check': 'true'
+            }
+          });
+          
+          const responseTime = performance.now() - startTime;
+          const cacheStatus = this.extractCacheStatus(response);
+          
+          return {
+            ...endpoint,
+            status: response.ok ? 'online' : 'degraded',
+            responseTime: Math.round(responseTime),
+            cacheStatus,
+            httpStatus: response.status,
+            headers: this.extractRelevantHeaders(response)
+          };
+        } catch (error) {
+          throw new Error(`Network error: ${error.message}`);
+        }
+      }
+
+      extractCacheStatus(response) {
+        const cfCacheStatus = response.headers.get('cf-cache-status');
+        const cacheStatus = response.headers.get('cache-status');
+        const xCache = response.headers.get('x-cache');
+        
+        if (cfCacheStatus) return `CF:${cfCacheStatus}`;
+        if (cacheStatus) return cacheStatus;
+        if (xCache) return xCache;
+        return 'unknown';
+      }
+
+      extractRelevantHeaders(response) {
+        const relevantHeaders = [
+          'cf-cache-status', 'cache-status', 'x-cache', 'age', 
+          'cache-control', 'cf-ray', 'server', 'x-nf-request-id'
+        ];
+        
+        const headers = {};
+        relevantHeaders.forEach(header => {
+          const value = response.headers.get(header);
+          if (value) headers[header] = value;
+        });
+        
+        return headers;
+      }
+
+      updateMetrics(results, totalTime) {
+        const successfulResults = results.filter(r => r.status === 'online');
+        const cacheHits = results.filter(r => 
+          r.cacheStatus && (
+            r.cacheStatus.includes('HIT') || 
+            r.cacheStatus.includes('hit') ||
+            r.cacheStatus.includes('stale')
+          )
+        );
+
+        this.metrics = {
+          responseTime: Math.round(totalTime / results.length),
+          cacheHitRate: Math.round((cacheHits.length / results.length) * 100),
+          availability: Math.round((successfulResults.length / results.length) * 100),
+          lastCheck: new Date(),
+          errors: results.filter(r => r.status === 'failed').map(r => r.error)
+        };
+
+        this.storeCDNMetricsHistory(this.metrics);
+      }
+
+      async storeCDNMetricsHistory(metrics) {
+        try {
+          if (typeof window.fn === 'object' && window.fn !== null) {
+            await window.fn.trackCustom('cdn_performance_timeseries', {
+              availability: metrics.availability,
+              responseTime: metrics.responseTime,
+              cacheHitRate: metrics.cacheHitRate,
+              timestamp: Date.now(),
+              errorCount: metrics.errors.length
+            });
+
+            console.log('📊: CDN metrics stored for historical tracking', {
+              availability: metrics.availability,
+              responseTime: metrics.responseTime,
+              cacheHitRate: metrics.cacheHitRate
+            });
+          }
+
+          const cdnHistory = JSON.parse(localStorage.getItem('cdnMetricsHistory') || '[]');
+          const newDataPoint = {
+            timestamp: Date.now(),
+            availability: metrics.availability,
+            responseTime: metrics.responseTime,
+            cacheHitRate: metrics.cacheHitRate,
+            errorCount: metrics.errors.length
+          };
+
+          cdnHistory.push(newDataPoint);
+
+          // Keep only last 100 data points (about 3+ hours at 2-minute intervals)
+          if (cdnHistory.length > 100) {
+            cdnHistory.splice(0, cdnHistory.length - 100);
+          }
+
+          localStorage.setItem('cdnMetricsHistory', JSON.stringify(cdnHistory));
+        } catch (error) {
+          console.warn('📊: Error storing CDN metrics history:', error.message);
+        }
+      }
+
+      getCDNHistory(timeRange = '1h') {
+        try {
+          const cdnHistory = JSON.parse(localStorage.getItem('cdnMetricsHistory') || '[]');
+          
+          if (cdnHistory.length === 0) {
+            return [];
+          }
+
+          const now = Date.now();
+          const timeRangeMs = timeRange === '1h' ? 60 * 60 * 1000 :
+                              timeRange === '24h' ? 24 * 60 * 60 * 1000 :
+                              timeRange === '7d' ? 7 * 24 * 60 * 60 * 1000 :
+                              30 * 24 * 60 * 60 * 1000;
+
+          const filteredHistory = cdnHistory.filter(point => 
+            now - point.timestamp <= timeRangeMs
+          );
+
+          console.log('📊: Retrieved CDN history', {
+            totalPoints: cdnHistory.length,
+            filteredPoints: filteredHistory.length,
+            timeRange: timeRange,
+            oldestPoint: filteredHistory.length > 0 ? new Date(filteredHistory[0].timestamp).toLocaleString() : 'None',
+            newestPoint: filteredHistory.length > 0 ? new Date(filteredHistory[filteredHistory.length - 1].timestamp).toLocaleString() : 'None'
+          });
+
+          return filteredHistory;
+        } catch (error) {
+          console.warn('📊: Error retrieving CDN history:', error.message);
+          return [];
+        }
+      }
+
+             updateUI(results) {
+         const cdnStatus = document.getElementById('cdn-status');
+         const availability = this.metrics.availability;
+         
+         if (availability >= 100) {
+           cdnStatus.innerHTML = `Online<br><small>${this.metrics.responseTime}ms avg, ${this.metrics.cacheHitRate}% cached</small>`;
+           cdnStatus.style.color = '#22c55e';
+         } else if (availability >= 75) {
+           cdnStatus.innerHTML = `Degraded<br><small>${availability}% available, ${this.metrics.responseTime}ms avg</small>`;
+           cdnStatus.style.color = '#f59e0b';
+         } else {
+           cdnStatus.innerHTML = `Offline<br><small>${availability}% available, ${this.metrics.errors.length} errors</small>`;
+           cdnStatus.style.color = '#ef4444';
+         }
+
+         this.updateDetailedMetrics(results);
+         this.updateMetricsCards();
+       }
+
+       updateMetricsCards() {
+         const availabilityEl = document.getElementById('cdn-availability');
+         const responseTimeEl = document.getElementById('cdn-response-time');
+         const cacheRateEl = document.getElementById('cdn-cache-rate');
+         const lastCheckEl = document.getElementById('cdn-last-check');
+
+         if (availabilityEl) {
+           availabilityEl.textContent = `${this.metrics.availability}%`;
+           availabilityEl.style.color = this.metrics.availability >= 100 ? '#22c55e' : 
+                                       this.metrics.availability >= 75 ? '#f59e0b' : '#ef4444';
+         }
+
+         if (responseTimeEl) {
+           responseTimeEl.textContent = `${this.metrics.responseTime}ms`;
+           responseTimeEl.style.color = this.metrics.responseTime <= 200 ? '#22c55e' : 
+                                       this.metrics.responseTime <= 500 ? '#f59e0b' : '#ef4444';
+         }
+
+         if (cacheRateEl) {
+           cacheRateEl.textContent = `${this.metrics.cacheHitRate}%`;
+           cacheRateEl.style.color = this.metrics.cacheHitRate >= 80 ? '#22c55e' : 
+                                    this.metrics.cacheHitRate >= 50 ? '#f59e0b' : '#ef4444';
+         }
+
+         if (lastCheckEl) {
+           lastCheckEl.textContent = this.metrics.lastCheck ? 
+             this.metrics.lastCheck.toLocaleTimeString() : 'Never';
+         }
+       }
+
+             updateDetailedMetrics(results) {
+         results.forEach(result => {
+           const elementId = `cdn-${result.name.toLowerCase().replace(/\s+/g, '-')}`;
+           const element = document.getElementById(elementId);
+           if (element) {
+             const statusText = result.status === 'online' ? 
+               `✅ ${result.responseTime}ms (${result.cacheStatus})` :
+               result.status === 'degraded' ?
+               `⚠️ ${result.responseTime}ms (${result.httpStatus})` :
+               `❌ Failed (${result.error || 'Unknown error'})`;
+             
+             element.textContent = statusText;
+             element.style.color = result.status === 'online' ? '#22c55e' : 
+                                  result.status === 'degraded' ? '#f59e0b' : '#ef4444';
+           }
+         });
+       }
+
+      getMetrics() {
+        return this.metrics;
+      }
+    }
+
+     const cdnMonitor = new CDNHealthMonitor();
+
+     let cdnHealthInterval;
+     
+     function startCDNMonitoring() {
+       cdnMonitor.checkCDNHealth();
+       
+       cdnHealthInterval = setInterval(() => {
+         cdnMonitor.checkCDNHealth();
+       }, 120000);
+       
+       console.log('🔄: Automatic CDN monitoring started (2-minute intervals)');
+     }
+     
+     function stopCDNMonitoring() {
+       if (cdnHealthInterval) {
+         clearInterval(cdnHealthInterval);
+         cdnHealthInterval = null;
+         console.log('⏹️: Automatic CDN monitoring stopped');
+       }
+     }
+
+     function trackCDNMetrics(results) {
+       if (typeof window.fn === 'object' && window.fn !== null) {
+         try {
+           window.fn.trackCustom('cdn_health_check', {
+             availability: cdnMonitor.metrics.availability,
+             responseTime: cdnMonitor.metrics.responseTime,
+             cacheHitRate: cdnMonitor.metrics.cacheHitRate,
+             errorCount: cdnMonitor.metrics.errors.length,
+             timestamp: Date.now()
+           });
+
+           results.forEach(result => {
+             window.fn.trackCustom('cdn_endpoint_check', {
+               endpoint: result.name,
+               status: result.status,
+               responseTime: result.responseTime,
+               cacheStatus: result.cacheStatus,
+               httpStatus: result.httpStatus,
+               timestamp: Date.now()
+             });
+           });
+
+           console.log('📊: CDN metrics tracked to analytics');
+         } catch (error) {
+           console.warn('⚠️: CDN analytics tracking failed:', error);
+         }
+       }
+     }
+
+    function checkWidgetHealth() {
+      const widgetStatus = document.getElementById('widget-status');
+      const lastUpdated = document.getElementById('last-updated');
+
+      const externalScripts = document.querySelectorAll('script[src*="widget.starsystemlabs.com"]');
+      const localScripts = document.querySelectorAll('script[src*="widget-js"]');
+      const externalStyles = document.querySelectorAll('link[href*="widget.starsystemlabs.com"]');
+      const localStyles = document.querySelectorAll('link[href*="widget-css"]');
+      
+      const hasWidgetAssets = externalScripts.length > 0 || localScripts.length > 0 || 
+                             externalStyles.length > 0 || localStyles.length > 0;
+      
+      if (hasWidgetAssets) {
+        widgetStatus.textContent = 'Operational';
+        widgetStatus.style.color = '#22c55e';
+      } else {
+        widgetStatus.textContent = 'Loading';
+        widgetStatus.style.color = '#f59e0b';
+      }
+
+      cdnMonitor.checkCDNHealth().catch(error => {
+        console.error('CDN health check failed:', error);
+        const cdnStatus = document.getElementById('cdn-status');
+        cdnStatus.innerHTML = `Error<br><small>Health check failed</small>`;
+        cdnStatus.style.color = '#ef4444';
+      });
+
+      lastUpdated.textContent = new Date().toLocaleString();
+    }
+
+    async function loadWidget() {
+      const container = document.getElementById('widget-container');
+      
+      window.isNebulaWebComponent = true;
+      
+      console.log('🔧 Configuring widget to use LOCAL assets...');
+      
+      window.VUE_APP_ASSETS_BASE_URL = '';
+      window.process = window.process || {};
+      window.process.env = window.process.env || {};
+      window.process.env.VUE_APP_ASSETS_BASE_URL = '';
+      window.process.env.NODE_ENV = 'development';
+      
+      window.assetsBaseUrl = '';
+      window.NEBULA_ASSETS_BASE = '';
+      
+      console.log('✅ Asset configuration overridden for local assets');
+      
+      try {
+        console.log('⏳ Waiting for analytics initialization...');
+        await window.analyticsInitializationPromise;
+        console.log('✅ Analytics initialization complete, proceeding with widget load');
+      } catch (error) {
+        console.error('❌ Analytics initialization failed:', error);
+      }
+      
+      console.log('🔧 Analytics setup: HealthCheckAnalytics is pre-initialized globally.');
+      console.log('  > Verifying global analytics instances:', { 
+        fn: typeof window.fn?.trackCustom,
+        nebulaAnalytics: typeof window.nebulaAnalytics?.trackCustom,
+        widgetAnalytics: typeof window.widgetAnalytics?.trackCustom,
+        healthCheckAnalytics: typeof window.healthCheckAnalytics?.trackCustom
+      });
+      
+      if (!window.fn?._tested) {
+        try {
+          window.fn.trackCustom('health_check_init', { timestamp: Date.now(), source: 'loadWidget' });
+          console.log('✅ Full analytics chain verified working from loadWidget.');
+          window.fn._tested = true;
+        } catch (error) {
+          console.error('❌ Analytics chain test failed from loadWidget:', error);
+        }
+      }
+      
+      console.log('📦 Loading widget scripts...');
+      
+      console.log('🚨 DEBUG: window.fn state BEFORE widget script load:');
+      console.log('  > typeof window.fn:', typeof window.fn);
+      console.log('  > typeof window.fn.trackCustom:', typeof window.fn?.trackCustom);
+      if (window.fn && window.fn._protected) {
+        console.log('  > window.fn is PROTECTED (source:', window.fn._source, ')');
+      } else if (window.fn) {
+        console.log('  > window.fn exists but is NOT protected.');
+      } else {
+        console.log('  > window.fn is UNDEFINED or null.');
+      }
+      
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const assetPrefix = isLocal ? './widget-dist/' : './';
+      
+      console.log(`🔧 Asset prefix: ${assetPrefix} (isLocal: ${isLocal})`);
+      
+      return new Promise((resolve, reject) => {
+      const vendorScript = document.createElement('script');
+        vendorScript.src = `${assetPrefix}widget-js/chunk-vendors.js`;
+      vendorScript.onload = () => {
+          console.log('✅ Vendor script loaded');
+        const appScript = document.createElement('script');
+          appScript.src = `${assetPrefix}widget-js/app.js`;
+        appScript.onload = () => {
+            console.log('📱 App script loaded, widget initializing...');
+          const widget = document.createElement('nebula-app');
+          widget.style.display = 'block';
+          widget.style.width = '100%';
+          widget.style.height = '100%';
+          container.appendChild(widget);
+          
+          setTimeout(() => {
+            document.getElementById('widget-status').textContent = 'Loaded';
+            document.getElementById('widget-status').style.color = '#22c55e';
+            initRealMetricsCollector();
+              resolve();
+            }, 1000);
+        };
+          appScript.onerror = (error) => {
+            console.error('❌ Failed to load app script:', error);
+            reject(error);
+          };
+        document.head.appendChild(appScript);
+      };
+        vendorScript.onerror = (error) => {
+          console.error('❌ Failed to load vendor script:', error);
+          reject(error);
+        };
+      document.head.appendChild(vendorScript);
+
+      const appCSS = document.createElement('link');
+      appCSS.rel = 'stylesheet';
+      appCSS.href = `${assetPrefix}widget-css/app.css`;
+      document.head.appendChild(appCSS);
+      
+      appCSS.onload = () => {
+          console.log('✅ Widget CSS loaded successfully');
+        };
+      });
+    }
+
+    function initRealMetricsCollector() {
+      const METRICS_KEY = 'nebula_widget_metrics';
+      const MAX_ENTRIES = 1000;
+      
+      let metrics = JSON.parse(localStorage.getItem(METRICS_KEY) || '[]');
+      
+      metrics.push({
+        type: 'widget_load',
+        success: true,
+        timestamp: Date.now(),
+        loadTime: performance.now()
+      });
+      
+      window.addEventListener('nebula:wallet_connect', (e) => {
+        metrics.push({
+          type: 'wallet_connect',
+          success: e.detail.success,
+          timestamp: Date.now()
+        });
+        saveMetrics();
+      });
+      
+      window.addEventListener('nebula:interaction', (e) => {
+        metrics.push({
+          type: 'interaction',
+          action: e.detail.action, // stake, claim, mine
+          success: e.detail.success,
+          error: e.detail.error,
+          timestamp: Date.now()
+        });
+        saveMetrics();
+      });
+      
+      let widgetVisible = false;
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && !widgetVisible) {
+            widgetVisible = true;
+            metrics.push({
+              type: 'widget_view',
+              timestamp: Date.now()
+            });
+            saveMetrics();
+          } else if (!entry.isIntersecting) {
+            widgetVisible = false;
+          }
+        });
+      });
+      
+      const widgetContainer = document.getElementById('widget-container');
+      if (widgetContainer) {
+        observer.observe(widgetContainer);
+      }
+      
+      function saveMetrics() {
+        if (metrics.length > MAX_ENTRIES) {
+          metrics = metrics.slice(-MAX_ENTRIES);
+        }
+        localStorage.setItem(METRICS_KEY, JSON.stringify(metrics));
+      }
+      
+      saveMetrics();
+      
+      window.nebulaRealMetrics = {
+        getMetrics: (since) => {
+          const cutoff = Date.now() - since;
+          return metrics.filter(m => m.timestamp > cutoff);
+        },
+        clearMetrics: () => {
+          metrics = [];
+          localStorage.removeItem(METRICS_KEY);
+        }
+      };
+      
+      console.log('Real metrics collector initialized. Current metrics:', metrics.length);
+    }
+
+    function showTab(tabName) {
+      const tabs = document.querySelectorAll('.tab-content');
+      tabs.forEach(tab => tab.classList.remove('active'));
+      
+      const buttons = document.querySelectorAll('.tab-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      
+      document.getElementById(tabName).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    function copyCode(elementId) {
+      const element = document.getElementById(elementId);
+      const text = element.textContent;
+      
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = element.parentElement.querySelector('.copy-btn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.classList.remove('copied');
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        const btn = element.parentElement.querySelector('.copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+      checkWidgetHealth();
+        await loadWidget();
+        console.log('✅ Widget loading completed successfully');
+      } catch (error) {
+        console.error('❌ Widget loading failed:', error);
+        const statusElement = document.getElementById('widget-status');
+        if (statusElement) {
+          statusElement.textContent = 'Failed';
+          statusElement.style.color = '#ef4444';
+        }
+      }
+      
+      setInterval(checkWidgetHealth, 30000);
+    });
+
+    // Metrics Dashboard Code
+    let currentTimeRange = '24h';
+    let currentMetricTab = 'load';
+    // const ANALYTICS_API_BASE = 'http://localhost:3001';
+    
+    class MetricsFetcher {
+      constructor() {
+        this.endpoint = '/.netlify/functions/analytics';
+      }
+      
+      async fetchTimeseries(timeRange) {
+        console.log(`[MetricsFetcher] fetchTimeseries for range: ${timeRange}`);
+        try {
+          const response = await fetch(`${this.endpoint}?range=${timeRange}&endpoint=timeseries`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch timeseries metrics: ${response.status}`);
+          }
+            const data = await response.json();
+          console.log('🔍 Analytics API Timeseries Success:', { });
+          const mockIndicator = [...document.querySelectorAll('span')].find(span => span.textContent.trim() === 'MOCK DATA');
+          if (mockIndicator && data && (data.metrics || data.timeseries)) {
+              mockIndicator.textContent = 'REAL DATA';
+              mockIndicator.style.background = '#22c55e';
+            }
+          return data;
+        } catch (error) {
+          console.error('[MetricsFetcher] fetchTimeseries API call failed:', error.message);
+          return { metrics: {}, timeseries: [], error: error.message, source: 'api_error' };
+        }
+      }
+      
+      async fetchAggregate(timeRange) {
+        console.log(`[MetricsFetcher] fetchAggregate for range: ${timeRange}`);
+        try {
+          const response = await fetch(`${this.endpoint}?range=${timeRange}`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch aggregate metrics: ${response.status}`);
+          }
+          const data = await response.json();
+          console.log('🔍 Analytics API Aggregate Success:', { });
+          return data;
+        } catch (error) {
+          console.error('[MetricsFetcher] fetchAggregate API call failed:', error.message);
+          return { metrics: {}, error: error.message, source: 'api_error' }; 
+        }
+      }
+      
+      async fetchComparisonData(currentRange) {
+        console.log(`[MetricsFetcher] fetchComparisonData called for range: ${currentRange}`);
+        try {
+          const response = await fetch(`${this.endpoint}?range=${currentRange}&endpoint=compare`);
+          if (!response.ok) {
+            throw new Error(`API request for comparison data failed: ${response.status}`);
+          }
+          
+          const apiData = await response.json();
+          console.log('[MetricsFetcher] API response for endpoint=compare:', apiData);
+
+          if (apiData && apiData.currentMetrics) {
+            const previousMetricsData = (apiData.previousMetrics && Object.keys(apiData.previousMetrics).length > 0) ? apiData.previousMetrics : {};
+            if (Object.keys(previousMetricsData).length === 0) {
+                console.warn('[MetricsFetcher] API provided currentMetrics but no, or empty, previousMetrics. Percentage changes will be N/A.');
+            }
+        return { 
+              current: { metrics: apiData.currentMetrics, period: apiData.currentPeriod, range: apiData.range },
+              previous: { metrics: previousMetricsData, period: apiData.previousPeriod },
+              comparison: this.calculatePercentageChanges(apiData.currentMetrics, previousMetricsData)
+            };
+          } else {
+            console.warn('[MetricsFetcher] API response for comparison data was not in expected format or missing currentMetrics. Returning empty structure.');
+            return {
+                current: { metrics: {} },
+                previous: { metrics: {} },
+                comparison: this.calculatePercentageChanges({}, {})
+            };
+          }
+        } catch (error) {
+          console.error('📊 [MetricsFetcher] fetchComparisonData failed entirely. Returning empty structure for graceful failure:', error.message);
+        return {
+            current: { metrics: {} },
+            previous: { metrics: {} },
+            comparison: this.calculatePercentageChanges({}, {})
+          };
+        }
+      }
+
+      calculatePercentageChanges(currentMetrics, previousMetrics) {
+        console.log('[MetricsFetcher] calculatePercentageChanges called with:', { currentMetrics, previousMetrics });
+
+        const formatNodataChange = () => ({ value: 'N/A', className: 'neutral', raw: NaN });
+
+        if (!currentMetrics || Object.keys(currentMetrics).length === 0) {
+            console.warn("[MetricsFetcher] 'currentMetrics' is missing or empty in calculatePercentageChanges. All changes N/A.");
+        return {
+              load_success_rate: formatNodataChange(),
+              render_time_p50: formatNodataChange(),
+              wallet_connect_success_rate: formatNodataChange(),
+              interaction_errors: formatNodataChange(),
+              total_events: formatNodataChange(),
+              rpc_latency: formatNodataChange()
+            };
+        }
+        if (!previousMetrics || Object.keys(previousMetrics).length === 0) {
+          console.warn("[MetricsFetcher] 'previousMetrics' is missing or empty in calculatePercentageChanges. All changes N/A.");
+          return {
+              load_success_rate: formatNodataChange(),
+              render_time_p50: formatNodataChange(),
+              wallet_connect_success_rate: formatNodataChange(),
+              interaction_errors: formatNodataChange(),
+              total_events: formatNodataChange(),
+              rpc_latency: formatNodataChange()
+        };
+      }
+      
+        const calculateChange = (currentVal, previousVal) => {
+          const numCurrent = Number(currentVal);
+          const numPrevious = Number(previousVal);
+          console.log(`[MetricsFetcher] calculateChange: current=${numCurrent}, previous=${numPrevious}`);
+          
+          if (isNaN(numCurrent) || isNaN(numPrevious)) {
+              console.warn(`[MetricsFetcher] Invalid non-numeric value for change calculation: current=${currentVal}, previous=${previousVal}`);
+              return NaN;
+          }
+          if (numPrevious === 0) {
+            if (numCurrent === 0) {
+              return 0;
+            } else {
+              return numCurrent * 100;
+      }
+          }
+          return ((numCurrent - numPrevious) / numPrevious) * 100;
+        };
+        
+        const formatChange = (change, isInverse = false) => {
+          if (isNaN(change)) {
+            return { value: 'N/A', className: 'neutral', raw: NaN };
+          }
+          
+          const cappedChange = Math.max(-999, Math.min(999, change));
+          const direction = (isInverse ? cappedChange < 0 : cappedChange > 0) ? '↑' : '↓';
+          const magnitude = Math.abs(cappedChange);
+          let className = (isInverse ? cappedChange < 0 : cappedChange > 0) ? 'positive' : 'negative';
+
+          if (!isFinite(cappedChange)) { 
+            className = 'neutral';
+            return { value: `${direction} N/A`, className: className, raw: cappedChange };
+          }
+          if (cappedChange === 0) {
+            className = 'neutral';
+             return { value: '0.0%', className: className, raw: cappedChange };
+          }
+          return {
+            value: `${direction} ${magnitude.toFixed(1)}%`,
+            className: className,
+            raw: cappedChange
+          };
+        };
+
+        const currentInteractionErrorSum = typeof currentMetrics.interaction_errors === 'object' 
+            ? Object.values(currentMetrics.interaction_errors || {}).reduce((a, b) => Number(b) + a, 0)
+            : (Number(currentMetrics.interaction_errors) || 0);
+
+        const previousInteractionErrorSum = typeof previousMetrics.interaction_errors === 'object'
+            ? Object.values(previousMetrics.interaction_errors || {}).reduce((a, b) => Number(b) + a, 0)
+            : (Number(previousMetrics.interaction_errors) || 0);
+
+        console.log(`[MetricsFetcher] Interaction errors: current=${currentInteractionErrorSum}, previous=${previousInteractionErrorSum}`);
+
+          return {
+          load_success_rate: formatChange(calculateChange(currentMetrics.load_success_rate, previousMetrics.load_success_rate)),
+          render_time_p50: formatChange(calculateChange(currentMetrics.render_time_p50, previousMetrics.render_time_p50), true),
+          wallet_connect_success_rate: formatChange(calculateChange(currentMetrics.wallet_connect_success_rate, previousMetrics.wallet_connect_success_rate)),
+          interaction_errors: formatChange(calculateChange(currentInteractionErrorSum, previousInteractionErrorSum), true),
+          total_events: formatChange(calculateChange(currentMetrics.total_events, previousMetrics.total_events)),
+          rpc_latency: formatChange(calculateChange(currentMetrics.rpc_latency_p50, previousMetrics.rpc_latency_p50), true)
+        };
+      }
+    }
+
+    const metricsFetcher = new MetricsFetcher();
+
+    const chartDefaults = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#e2e8f0',
+            font: {
+              size: 12
+            }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          titleColor: '#fde047',
+          bodyColor: '#e2e8f0',
+          borderColor: '#334155',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: 'rgba(148, 163, 184, 0.1)'
+          },
+          ticks: {
+            color: '#94a3b8',
+            maxRotation: 45,
+            minRotation: 45
+          }
+        },
+        y: {
+          grid: {
+            color: 'rgba(148, 163, 184, 0.1)'
+          },
+          ticks: {
+            color: '#94a3b8'
+          }
+        }
+      }
+    };
+
+    const charts = {};
+
+    function processWalletConnectionDataWithMaintainedRate(timeseriesData) {
+      console.log('📊 3-PART-RATE: Processing wallet connection data with 3-part logic');
+
+      const successRates = timeseriesData.map(p => p.wallet_success_rate ?? 100);
+      const rejectionRates = timeseriesData.map(p => p.wallet_user_rejection_rate ?? 0);
+      const technicalFailureRates = timeseriesData.map(p => p.wallet_technical_failure_rate ?? 0);
+
+      const lastPoint = timeseriesData[timeseriesData.length - 1] || {};
+
+      return {
+        success: successRates,
+        user_rejection: rejectionRates,
+        technical_failure: technicalFailureRates,
+        _is_rolling_rate: timeseriesData.some(p => p.is_rolling_rate),
+        _rolling_window_size: lastPoint.rolling_window_size || 0,
+      };
+    }
+
+    function processWidgetLoadDataWithMaintainedRate(timeseriesData) {
+      console.log('📊 REFACTOR: Processing widget load data with simplified logic');
+    
+      const successRates = timeseriesData.map(point => point.load_success_rate ?? 100);
+      
+      const maintainedCount = timeseriesData.filter(p => p.is_maintained_load_rate).length;
+      const isRollingRate = timeseriesData.some(p => p.is_rolling_load_rate);
+      const lastPoint = timeseriesData[timeseriesData.length - 1] || {};
+      
+      return {
+        success: successRates,
+        _maintained_rate_count: maintainedCount,
+        _is_maintained_rate: maintainedCount > 0,
+        _is_rolling_load_rate: isRollingRate,
+        _rolling_load_window_size: lastPoint.rolling_load_window_size || 0,
+        _last_known_success_rate: lastPoint.load_success_rate
+      };
+    }
+
+    async function createCharts() {
+      console.log('🎯 Starting createCharts function (public/health-check.html)');
+      let useRealData = false;
+      let labels, loadSuccessData, renderTimeData, walletConnectData, interactionData, userVolumeData, rpcLatencyData;
+      
+      let currentPeriodAggregate = null;
+      let timeseriesRealData = null;
+      let comparisonObjectFromFetcher = null;
+      let metricsForCurrentCardValues = {};
+      let processedLoadData = null;
+      let loadMaintainedInfo = {
+        _maintained_rate_count: 0,
+        _is_maintained_rate: false,
+        _last_known_success_rate: 0
+      };
+      
+      try {
+        console.log('📊 Attempting to fetch real metrics with enhanced pipelines... (public/health-check.html)');
+        const fetcher = new MetricsFetcher();
+        
+        const fetchResults = await Promise.all([
+          fetcher.fetchAggregate(currentTimeRange),
+          fetcher.fetchTimeseries(currentTimeRange),
+          fetcher.fetchComparisonData(currentTimeRange)
+        ]);
+
+        currentPeriodAggregate = fetchResults[0];
+        timeseriesRealData = fetchResults[1];
+        comparisonObjectFromFetcher = fetchResults[2];
+
+        console.log('📊: Metrics fetched successfully from Redis-only analytics API:', {
+          currentPeriodAggregate: currentPeriodAggregate ? 'Available' : 'null',
+          timeseriesRealData: timeseriesRealData ? 'Available' : 'null',
+          comparisonObjectFromFetcher: comparisonObjectFromFetcher ? 'Available' : 'null',
+          hasComparisonProperty: comparisonObjectFromFetcher && comparisonObjectFromFetcher.hasOwnProperty('comparison'),
+          timeseriesLength: timeseriesRealData?.timeseries?.length || 0
+        });
+      
+        if (comparisonObjectFromFetcher && comparisonObjectFromFetcher.current && comparisonObjectFromFetcher.comparison && (currentPeriodAggregate || timeseriesRealData)) {
+        useRealData = true;
+          console.log('✅ Using real data from analytics API (public/health-check.html)');
+        
+        const mockIndicator = [...document.querySelectorAll('span')].find(span => 
+          span.textContent.trim() === 'MOCK DATA'
+        );
+        if (mockIndicator) {
+          mockIndicator.textContent = 'REAL DATA';
+          mockIndicator.style.background = '#22c55e';
+          }
+          
+          metricsForCurrentCardValues = comparisonObjectFromFetcher.current.metrics || currentPeriodAggregate?.metrics || timeseriesRealData?.metrics || {};
+          console.log('Using metricsForCurrentCardValues for summary cards (public/health-check.html):', metricsForCurrentCardValues);
+        
+          if (timeseriesRealData?.timeseries && timeseriesRealData.timeseries.length > 0) {
+            labels = timeseriesRealData.timeseries.map(point => {
+            const date = new Date(point.timestamp);
+            if (currentTimeRange === '1h') return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            if (currentTimeRange === '24h') return date.toLocaleTimeString('en-US', { hour: '2-digit' });
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          });
+          
+            processedLoadData = processWidgetLoadDataWithMaintainedRate(timeseriesRealData.timeseries);
+            loadSuccessData = processedLoadData.success;
+          renderTimeData = {
+              p50: timeseriesRealData.timeseries.map(point => point.render_time_p50 || 0),
+              p95: timeseriesRealData.timeseries.map(point => point.render_time_p95 || 0),
+              max: timeseriesRealData.timeseries.map(point => point.render_time_max || 0)
+          };
+          walletConnectData = processWalletConnectionDataWithMaintainedRate(timeseriesRealData.timeseries);
+          
+            rpcLatencyData = {
+            p50: timeseriesRealData.timeseries.map(point => point.rpc_latency_p50 ?? 0),
+            p95: timeseriesRealData.timeseries.map(point => point.rpc_latency_p95 ?? 0)
+            };
+          console.log('📊: Using RPC data from Redis-only analytics API');
+          } else {
+          const points = currentTimeRange === '1h' ? 12 : currentTimeRange === '24h' ? 24 : currentTimeRange === '7d' ? 7 : 30;
+          const now = new Date();
+          const timeStep = currentTimeRange === '1h' ? 5 * 60 * 1000 :
+                          currentTimeRange === '24h' ? 60 * 60 * 1000 :
+                          currentTimeRange === '7d' ? 6 * 60 * 60 * 1000 :
+                          24 * 60 * 60 * 1000;
+          
+          labels = Array.from({ length: points }, (_, i) => {
+            const time = new Date(now.getTime() - (points - 1 - i) * timeStep);
+            if (currentTimeRange === '1h') return time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            if (currentTimeRange === '24h') return time.toLocaleTimeString('en-US', { hour: '2-digit' });
+            return time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          });
+          
+            const chartSourceMetrics = metricsForCurrentCardValues;
+            
+            const currentLoadSuccessRate = chartSourceMetrics.load_success_rate ?? 0;
+            const isMaintainedLoadRate = chartSourceMetrics.is_maintained_load_rate || chartSourceMetrics.is_maintained_widget_load_rate || false;
+            
+            loadSuccessData = new Array(points).fill(currentLoadSuccessRate);
+            
+            if (!window.chartMaintainedRates) window.chartMaintainedRates = {};
+            window.chartMaintainedRates.loadSuccess = {
+              _is_maintained_rate: isMaintainedLoadRate,
+              _maintained_rate_count: isMaintainedLoadRate ? points : 0,
+              _last_known_success_rate: currentLoadSuccessRate
+            };
+          renderTimeData = {
+              p50: new Array(points).fill(chartSourceMetrics.render_time_p50 || 0),
+              p95: new Array(points).fill(chartSourceMetrics.render_time_p95 || 0),
+              max: new Array(points).fill(chartSourceMetrics.render_time_max || 0)
+          };
+          const currentSuccessRate = chartSourceMetrics.wallet_success_rate ?? chartSourceMetrics.wallet_connect_success_rate ?? 0;
+          const currentUserRejectionRate = chartSourceMetrics.wallet_user_rejection_rate ?? 0;
+          const currentTechnicalFailureRate = chartSourceMetrics.wallet_technical_failure_rate ?? 0;
+          const isMaintainedRate = chartSourceMetrics.is_maintained_rate || false;
+          const isRollingRate = chartSourceMetrics.is_rolling_rate || false;
+          const rollingWindowSize = chartSourceMetrics.rolling_window_size || 0;
+          
+          console.log('📊: Using aggregate three-part wallet data', {
+            successRate: currentSuccessRate,
+            userRejectionRate: currentUserRejectionRate,
+            technicalFailureRate: currentTechnicalFailureRate,
+            isMaintainedRate,
+            isRollingRate,
+            rollingWindowSize
+          });
+          
+          walletConnectData = {
+              success: new Array(points).fill(currentSuccessRate),
+              user_rejection: new Array(points).fill(currentUserRejectionRate),
+              technical_failure: new Array(points).fill(currentTechnicalFailureRate),
+              _is_maintained_rate: isMaintainedRate,
+              _is_rolling_rate: isRollingRate,
+              _rolling_window_size: rollingWindowSize
+          };
+            rpcLatencyData = {
+              p50: new Array(points).fill(chartSourceMetrics.rpc_latency_p50 ?? 0),
+              p95: new Array(points).fill(chartSourceMetrics.rpc_latency_p95 ?? 0)
+            };
+          }
+          interactionData = metricsForCurrentCardValues.interaction_errors || { stake: 0, claim: 0, mine: 0 };
+        
+        if (timeseriesRealData?.timeseries && timeseriesRealData.timeseries.length > 0) {
+        userVolumeData = {
+            loads: timeseriesRealData.timeseries.map(point => point.widget_loads || point.user_volume?.widget_loads || point.total_events || 0),
+            connects: timeseriesRealData.timeseries.map(point => point.wallet_connects || point.user_volume?.wallet_connects || 0),
+            unique: timeseriesRealData.timeseries.map(point => point.unique_sessions || point.user_volume?.unique_widgets || point.unique_widgets || 0),
+            interactions: timeseriesRealData.timeseries.map(point => point.interactions || point.user_volume?.total_interactions || 0)
+          };
+          
+          console.log('📊: Using user volume data from Redis-only analytics API', {
+            loads_data_points: userVolumeData.loads.length,
+            connects_data_points: userVolumeData.connects.length,
+            unique_data_points: userVolumeData.unique.length,
+            sample_loads: userVolumeData.loads.slice(0, 3),
+            sample_connects: userVolumeData.connects.slice(0, 3),
+            sample_unique: userVolumeData.unique.slice(0, 3)
+          });
+        } else {
+          const points = currentTimeRange === '1h' ? 12 : currentTimeRange === '24h' ? 24 : currentTimeRange === '7d' ? 7 : 30;
+          const aggregateUserVolume = metricsForCurrentCardValues.user_volume || {};
+          
+          userVolumeData = {
+            loads: new Array(points).fill(aggregateUserVolume.widget_loads || metricsForCurrentCardValues.total_events || 0),
+            connects: new Array(points).fill(aggregateUserVolume.wallet_connects || metricsForCurrentCardValues.wallet_connects || 0),
+            unique: new Array(points).fill(aggregateUserVolume.unique_widgets || metricsForCurrentCardValues.unique_widgets || 0),
+            interactions: new Array(points).fill(aggregateUserVolume.total_interactions || 0)
+          };
+          
+          console.log('📊 FALLBACK USER VOLUME DATA: Using aggregate data repeated across time points', {
+            points: points,
+            loads_value: aggregateUserVolume.widget_loads || 0,
+            connects_value: aggregateUserVolume.wallet_connects || 0,
+            unique_value: aggregateUserVolume.unique_widgets || 0
+          });
+        }
+        
+          updateSummaryCards(comparisonObjectFromFetcher, metricsForCurrentCardValues);
+        
+      } else {
+          console.warn('⚠️ Conditions for using real data not fully met, or comparisonObjectFromFetcher is incomplete. Falling back. (public/health-check.html)', { comparisonObjectFromFetcher });
+          throw new Error('Real data conditions not met or comparison object incomplete.');
+        }
+      } catch (error) {
+        console.log('📊 API failed or returned no data (public/health-check.html):', error.message);
+        useRealData = false;
+        
+        labels = [];
+        loadSuccessData = [];
+        renderTimeData = { p50: [], p95: [], max: [] };
+        walletConnectData = { success: [], failure: [] };
+        interactionData = { stake: 0, claim: 0, mine: 0 };
+        userVolumeData = { loads: [], connects: [], unique: [] };
+        rpcLatencyData = { p50: [], p95: [] };
+
+        const emptyComparison = {
+          current: { metrics: {} },
+          previous: { metrics: {} },
+          comparison: {
+            load_success_rate: { value: 'N/A', className: 'neutral' },
+            render_time_p50: { value: 'N/A', className: 'neutral' },
+            wallet_connect_success_rate: { value: 'N/A', className: 'neutral' },
+            interaction_errors: { value: 'N/A', className: 'neutral' },
+            total_events: { value: 'N/A', className: 'neutral' },
+            rpc_latency: { value: 'N/A', className: 'neutral' }
+          }
+        };
+        updateSummaryCards(emptyComparison, {});
+        
+        const mockIndicator = [...document.querySelectorAll('span')].find(span => 
+          span.textContent.trim() === 'MOCK DATA' || span.textContent.trim() === 'REAL DATA'
+        );
+        if (mockIndicator) {
+          mockIndicator.textContent = 'NO DATA';
+          mockIndicator.style.background = '#ef4444';
+        }
+      }
+
+      console.log('📊 Creating charts with data (public/health-check.html):', {
+        useRealData,
+        labelsCount: labels?.length || 0,
+        loadSuccessDataLength: loadSuccessData?.length || 0,
+        renderTimeDataLength: renderTimeData?.p50?.length || 0,
+        walletConnectDataLength: walletConnectData?.success?.length || 0,
+        interactionDataLength: interactionData?.length || 0,
+        userVolumeDataLength: userVolumeData?.loads?.length || 0,
+        rpcLatencyDataLength: rpcLatencyData?.p50?.length || 0
+      });
+
+      if (typeof Chart === 'undefined') {
+        console.error('❌ Chart.js library not loaded!');
+        return;
+      }
+
+      const loadSuccessCtx = document.getElementById('loadSuccessChart');
+      if (loadSuccessCtx) {
+        if (charts.loadSuccess) charts.loadSuccess.destroy();
+        
+        const loadDataSourceIndicator = document.getElementById('loadDataSource');
+        if (loadDataSourceIndicator) {
+          if (processedLoadData) {
+            loadMaintainedInfo = processedLoadData;
+          } 
+          else if (window.chartMaintainedRates?.loadSuccess) {
+            loadMaintainedInfo = window.chartMaintainedRates.loadSuccess;
+          }
+          
+          const maintainedCount = loadMaintainedInfo._maintained_rate_count || 0;
+          const totalPoints = loadSuccessData?.length || 0;
+          const isMaintainedRate = loadMaintainedInfo._is_maintained_rate || false;
+          const isRollingLoadRate = loadMaintainedInfo._is_rolling_load_rate || false;
+          const rollingLoadWindowSize = loadMaintainedInfo._rolling_load_window_size || 0;
+          
+          if (isRollingLoadRate && rollingLoadWindowSize > 0) {
+            loadDataSourceIndicator.textContent = `ROLLING WINDOW (${rollingLoadWindowSize} events)`;
+            loadDataSourceIndicator.style.background = '#8b5cf6';
+            loadDataSourceIndicator.title = `Success rate calculated from rolling window of last ${rollingLoadWindowSize} widget load attempts`;
+          } else if (maintainedCount > 0 || isMaintainedRate) {
+            loadDataSourceIndicator.textContent = `MAINTAINED RATE (${maintainedCount}/${totalPoints} points)`;
+            loadDataSourceIndicator.style.background = '#f59e0b';
+            loadDataSourceIndicator.title = `Last known rate maintained during ${maintainedCount} quiet periods`;
+          } else if (totalPoints > 0) {
+            loadDataSourceIndicator.textContent = 'REAL DATA';
+            loadDataSourceIndicator.style.background = '#22c55e';
+            loadDataSourceIndicator.title = 'All data points represent actual widget load events';
+          } else {
+            loadDataSourceIndicator.textContent = 'NO DATA';
+            loadDataSourceIndicator.style.background = '#ef4444';
+            loadDataSourceIndicator.title = 'No widget load data available';
+          }
+        }
+        
+        const loadFailureData = loadSuccessData ? loadSuccessData.map(successRate => 100 - successRate) : [];
+        
+        console.log(`📊 PERFORMANCE CHART: Widget Load Success/Failure Chart updated for ${currentTimeRange}`, {
+          load_data_points: loadSuccessData?.length || 0,
+          sample_success_rate: loadSuccessData?.[0],
+          sample_failure_rate: loadFailureData?.[0],
+          maintained_rate_count: loadMaintainedInfo._maintained_rate_count || 0,
+          last_known_success_rate: loadMaintainedInfo._last_known_success_rate,
+          is_maintained_rate: loadMaintainedInfo._is_maintained_rate || false
+        });
+        
+        charts.loadSuccess = new Chart(loadSuccessCtx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Success Rate',
+              data: loadSuccessData,
+              borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                fill: true,
+              tension: 0.4
+              },
+              {
+                label: 'Failure Rate',
+                data: loadFailureData,
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                fill: true,
+                tension: 0.4
+              }
+            ]
+          },
+          options: {
+            ...chartDefaults,
+            scales: {
+              ...chartDefaults.scales,
+              y: {
+                ...chartDefaults.scales.y,
+                stacked: true,
+                min: 0,
+                max: 100,
+                ticks: {
+                  ...chartDefaults.scales.y.ticks,
+                  callback: value => value + '%'
+                }
+              }
+            }
+          }
+        });
+      }
+
+      const renderTimeCtx = document.getElementById('renderTimeChart');
+      if (renderTimeCtx) {
+        if (charts.renderTime) charts.renderTime.destroy();
+        
+        const renderDataSourceIndicator = document.getElementById('renderTimeDataSource');
+        if (renderDataSourceIndicator) {
+          let maintainedCount = 0;
+          let totalPoints = renderTimeData.p50?.length || 0;
+          let isMaintainedRenderTimes = false;
+          
+          if (timeseriesRealData?.timeseries) {
+            const maintainedPoints = timeseriesRealData.timeseries.filter(point => point.is_maintained_render_times).length;
+            maintainedCount = maintainedPoints;
+            isMaintainedRenderTimes = maintainedPoints > 0;
+          }
+          else if (metricsForCurrentCardValues?.is_maintained_render_times) {
+            maintainedCount = totalPoints;
+            isMaintainedRenderTimes = true;
+          }
+          
+          if (maintainedCount > 0 || isMaintainedRenderTimes) {
+            renderDataSourceIndicator.textContent = `MAINTAINED TIMES (${maintainedCount}/${totalPoints} points)`;
+            renderDataSourceIndicator.style.background = '#f59e0b';
+            renderDataSourceIndicator.title = `Last known render times maintained during ${maintainedCount} quiet periods`;
+          } else if (totalPoints > 0) {
+            renderDataSourceIndicator.textContent = 'REAL DATA';
+            renderDataSourceIndicator.style.background = '#22c55e';
+            renderDataSourceIndicator.title = 'All data points represent actual render time measurements';
+          } else {
+            renderDataSourceIndicator.textContent = 'NO DATA';
+            renderDataSourceIndicator.style.background = '#ef4444';
+            renderDataSourceIndicator.title = 'No render time data available';
+          }
+          
+          console.log(`📊 RENDER TIME CHART: Render time chart updated for ${currentTimeRange}`, {
+            p50_data_points: renderTimeData.p50?.length || 0,
+            p95_data_points: renderTimeData.p95?.length || 0,
+            max_data_points: renderTimeData.max?.length || 0,
+            sample_p50: renderTimeData.p50?.[0],
+            sample_p95: renderTimeData.p95?.[0],
+            maintained_count: maintainedCount,
+            is_maintained_render_times: isMaintainedRenderTimes
+          });
+        }
+        
+        charts.renderTime = new Chart(renderTimeCtx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'p50 (Median)',
+                data: renderTimeData.p50,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4
+              },
+              {
+                label: 'p95',
+                data: renderTimeData.p95,
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                tension: 0.4
+              },
+              {
+                label: 'Max',
+                data: renderTimeData.max,
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4
+              }
+            ]
+          },
+          options: {
+            ...chartDefaults,
+            scales: {
+              ...chartDefaults.scales,
+              y: {
+                ...chartDefaults.scales.y,
+                ticks: {
+                  ...chartDefaults.scales.y.ticks,
+                  callback: value => value + 'ms'
+                }
+              }
+            }
+          }
+        });
+      }
+
+      const walletConnectCtx = document.getElementById('walletConnectChart');
+      if (walletConnectCtx) {
+        if (charts.walletConnect) charts.walletConnect.destroy();
+        
+        const walletDataSourceIndicator = document.getElementById('walletDataSource');
+        if (walletDataSourceIndicator) {
+          const maintainedCount = walletConnectData._maintained_rate_count || 0;
+          const totalPoints = walletConnectData.success?.length || 0;
+          const isMaintainedRate = walletConnectData._is_maintained_rate || false;
+          const isRollingRate = walletConnectData._is_rolling_rate || false;
+          const rollingWindowSize = walletConnectData._rolling_window_size || 0;
+          
+          if (isRollingRate && rollingWindowSize > 0) {
+            walletDataSourceIndicator.textContent = `ROLLING WINDOW (${rollingWindowSize} events)`;
+            walletDataSourceIndicator.style.background = '#8b5cf6';
+            walletDataSourceIndicator.title = `Success rate calculated from rolling window of last ${rollingWindowSize} wallet connection attempts`;
+          } else if (maintainedCount > 0 || isMaintainedRate) {
+            walletDataSourceIndicator.textContent = `MAINTAINED RATE (${maintainedCount}/${totalPoints} points)`;
+            walletDataSourceIndicator.style.background = '#f59e0b';
+            walletDataSourceIndicator.title = `Last known rate maintained during ${maintainedCount} quiet periods`;
+          } else if (totalPoints > 0) {
+            walletDataSourceIndicator.textContent = 'REAL DATA';
+            walletDataSourceIndicator.style.background = '#22c55e';
+            walletDataSourceIndicator.title = 'All data points represent actual wallet connection events';
+          } else {
+            walletDataSourceIndicator.textContent = 'NO DATA';
+            walletDataSourceIndicator.style.background = '#ef4444';
+            walletDataSourceIndicator.title = 'No wallet connection data available';
+          }
+        }
+        
+        console.log(`📊 RELIABILITY CHART: Wallet Connect Success/Failure Chart updated for ${currentTimeRange}`, {
+          success_data_points: walletConnectData.success?.length || 0,
+          failure_data_points: walletConnectData.failure?.length || 0,
+          sample_success_rate: walletConnectData.success?.[0],
+          maintained_rate_count: walletConnectData._maintained_rate_count || 0,
+          last_known_success_rate: walletConnectData._last_known_success_rate,
+          is_maintained_rate: walletConnectData._is_maintained_rate || false
+        });
+        
+        charts.walletConnect = new Chart(walletConnectCtx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Success',
+                data: walletConnectData.success,
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                fill: true,
+                tension: 0.4
+              },
+              {
+                label: 'User Rejection',
+                data: walletConnectData.user_rejection,
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                fill: true,
+                tension: 0.4
+              },
+              {
+                label: 'Technical Failure',
+                data: walletConnectData.technical_failure,
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                fill: true,
+                tension: 0.4
+              }
+            ]
+          },
+          options: {
+            ...chartDefaults,
+            scales: {
+              ...chartDefaults.scales,
+              y: {
+                ...chartDefaults.scales.y,
+                stacked: true,
+                min: 0,
+                max: 100,
+                ticks: {
+                  ...chartDefaults.scales.y.ticks,
+                  callback: value => value + '%'
+                }
+              }
+            }
+          }
+        });
+      }
+
+      const interactionCtx = document.getElementById('interactionFailuresChart');
+      if (interactionCtx) {
+        if (charts.interactions) charts.interactions.destroy();
+        
+        let stakeErrors, claimErrors, mineErrors, unstakeErrors, vestingErrors;
+        
+        if (timeseriesRealData?.timeseries && timeseriesRealData.timeseries.length > 0) {
+          stakeErrors = timeseriesRealData.timeseries.map(point => 
+            point.interaction_errors?.stake || 0
+          );
+          claimErrors = timeseriesRealData.timeseries.map(point => 
+            point.interaction_errors?.claim || 0
+          );
+          mineErrors = timeseriesRealData.timeseries.map(point => 
+            point.interaction_errors?.mine || 0
+          );
+          unstakeErrors = timeseriesRealData.timeseries.map(point => 
+            point.interaction_errors?.unstake || 0
+          );
+          vestingErrors = timeseriesRealData.timeseries.map(point => 
+            point.interaction_errors?.vesting || 0
+          );
+          
+          console.log('📊: Using REAL timeseries interaction error data', {
+            timeseries_points: timeseriesRealData.timeseries.length,
+            stake_errors_total: stakeErrors.reduce((a, b) => a + b, 0),
+            claim_errors_total: claimErrors.reduce((a, b) => a + b, 0),
+            mine_errors_total: mineErrors.reduce((a, b) => a + b, 0),
+            unstake_errors_total: unstakeErrors.reduce((a, b) => a + b, 0),
+            vesting_errors_total: vestingErrors.reduce((a, b) => a + b, 0)
+          });
+        } else if (Array.isArray(interactionData.stake) && interactionData.stake.length === labels.length) {
+          stakeErrors = interactionData.stake;
+          claimErrors = interactionData.claim;
+          mineErrors = interactionData.mine;
+          unstakeErrors = interactionData.unstake || new Array(labels.length).fill(0);
+          vestingErrors = interactionData.vesting || new Array(labels.length).fill(0);
+          
+          console.log('📊: Using REAL interaction error data from interactionData', {
+            data_points: labels.length,
+            stake_errors_total: stakeErrors.reduce((a, b) => a + b, 0),
+            claim_errors_total: claimErrors.reduce((a, b) => a + b, 0),
+            mine_errors_total: mineErrors.reduce((a, b) => a + b, 0)
+          });
+        } else {
+          const points = labels?.length || 12;
+          const realInteractionErrors = interactionData || { stake: 0, claim: 0, mine: 0, unstake: 0, vesting: 0 };
+          
+          stakeErrors = new Array(points).fill(0);
+          claimErrors = new Array(points).fill(0);
+          mineErrors = new Array(points).fill(0);
+          unstakeErrors = new Array(points).fill(0);
+          vestingErrors = new Array(points).fill(0);
+          
+          if (realInteractionErrors.stake > 0) {
+            const recentPoints = Math.min(3, points);
+            for (let i = points - recentPoints; i < points; i++) {
+              stakeErrors[i] = Math.floor(realInteractionErrors.stake / recentPoints);
+            }
+          }
+          
+          if (realInteractionErrors.claim > 0) {
+            const recentPoints = Math.min(2, points);
+            for (let i = points - recentPoints; i < points; i++) {
+              claimErrors[i] = Math.floor(realInteractionErrors.claim / recentPoints);
+            }
+          }
+          
+          if (realInteractionErrors.mine > 0) {
+            const recentPoints = Math.min(4, points);
+            for (let i = points - recentPoints; i < points; i++) {
+              mineErrors[i] = Math.floor(realInteractionErrors.mine / recentPoints);
+            }
+          }
+          
+          if (realInteractionErrors.unstake > 0) {
+            const recentPoints = Math.min(2, points);
+            for (let i = points - recentPoints; i < points; i++) {
+              unstakeErrors[i] = Math.floor(realInteractionErrors.unstake / recentPoints);
+            }
+          }
+          
+          if (realInteractionErrors.vesting > 0) {
+            const recentPoints = Math.min(1, points);
+            for (let i = points - recentPoints; i < points; i++) {
+              vestingErrors[i] = Math.floor(realInteractionErrors.vesting / recentPoints);
+            }
+          }
+          
+          console.log('📊: Using REAL aggregate interaction error data (distributed)', {
+            points: points,
+            real_stake_errors: realInteractionErrors.stake,
+            real_claim_errors: realInteractionErrors.claim,
+            real_mine_errors: realInteractionErrors.mine,
+            real_unstake_errors: realInteractionErrors.unstake,
+            real_vesting_errors: realInteractionErrors.vesting,
+            distributed_stake_total: stakeErrors.reduce((a, b) => a + b, 0),
+            distributed_claim_total: claimErrors.reduce((a, b) => a + b, 0),
+            distributed_mine_total: mineErrors.reduce((a, b) => a + b, 0)
+          });
+        }
+        
+        const safeLabels = labels || [];
+        const safeStakeErrors = stakeErrors || [];
+        const safeClaimErrors = claimErrors || [];
+        const safeMineErrors = mineErrors || [];
+        const safeUnstakeErrors = unstakeErrors || [];
+        const safeVestingErrors = vestingErrors || [];
+        
+        console.log(`📊 RELIABILITY CHART: Interaction Failures Chart updated for ${currentTimeRange}`, {
+          labels_count: safeLabels.length,
+          stake_errors_sample: safeStakeErrors.slice(0, 3),
+          claim_errors_sample: safeClaimErrors.slice(0, 3),
+          mine_errors_sample: safeMineErrors.slice(0, 3),
+          unstake_errors_sample: safeUnstakeErrors.slice(0, 3),
+          vesting_errors_sample: safeVestingErrors.slice(0, 3),
+          total_stake_errors: safeStakeErrors.reduce((a, b) => a + b, 0),
+          total_claim_errors: safeClaimErrors.reduce((a, b) => a + b, 0),
+          total_mine_errors: safeMineErrors.reduce((a, b) => a + b, 0),
+          base_interaction_data: interactionData || {},
+          data_source: timeseriesRealData?.timeseries ? 'timeseries' : Array.isArray(interactionData?.stake) ? 'array' : 'aggregate',
+          variables_status: {
+            timeseriesRealData: timeseriesRealData ? 'Available' : 'null',
+            labels: labels ? 'Available' : 'null',
+            interactionData: interactionData ? 'Available' : 'null'
+          }
+        });
+        
+        charts.interactions = new Chart(interactionCtx, {
+          type: 'bar',
+          data: {
+            labels: safeLabels,
+            datasets: [
+              {
+                label: 'Stake Errors',
+                data: safeStakeErrors,
+                backgroundColor: '#ef4444'
+              },
+              {
+                label: 'Claim Errors',
+                data: safeClaimErrors,
+                backgroundColor: '#f59e0b'
+              },
+              {
+                label: 'Mine Errors',
+                data: safeMineErrors,
+                backgroundColor: '#8b5cf6'
+              },
+              {
+                label: 'Unstake Errors',
+                data: safeUnstakeErrors,
+                backgroundColor: '#ec4899'
+              },
+              {
+                label: 'Vesting Errors',
+                data: safeVestingErrors,
+                backgroundColor: '#06b6d4'
+              }
+            ]
+          },
+          options: {
+            ...chartDefaults,
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              ...chartDefaults.scales,
+              x: {
+                ...chartDefaults.scales.x,
+                stacked: true
+              },
+              y: {
+                ...chartDefaults.scales.y,
+                stacked: true,
+                beginAtZero: true,
+                ticks: {
+                  ...chartDefaults.scales.y.ticks,
+                  stepSize: 1,
+                  callback: value => Math.round(value).toString()
+                }
+              }
+            },
+            plugins: {
+              ...chartDefaults.plugins,
+              tooltip: {
+                ...chartDefaults.plugins.tooltip,
+                callbacks: {
+                  title: function(context) {
+                    return `Time Period: ${context[0].label}`;
+                  },
+                  label: function(context) {
+                    const value = Math.round(context.parsed.y);
+                    return `${context.dataset.label}: ${value} error${value !== 1 ? 's' : ''}`;
+                  },
+                  footer: function(context) {
+                    const totalErrors = context.reduce((sum, item) => sum + item.parsed.y, 0);
+                    return totalErrors > 0 ? `Total: ${totalErrors} error${totalErrors !== 1 ? 's' : ''}` : '';
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      const userVolumeCtx = document.getElementById('userVolumeChart');
+      if (userVolumeCtx) {
+        if (charts.userVolume) charts.userVolume.destroy();
+        
+        let volumeChartData;
+        
+        console.log('📊 USER VOLUME CHART: Processing user volume data', {
+          userVolumeData_structure: Object.keys(userVolumeData),
+          loads_length: userVolumeData.loads?.length,
+          connects_length: userVolumeData.connects?.length,
+          unique_length: userVolumeData.unique?.length,
+          interactions_length: userVolumeData.interactions?.length,
+          sample_loads: userVolumeData.loads?.slice(0, 3),
+          sample_connects: userVolumeData.connects?.slice(0, 3),
+          sample_unique: userVolumeData.unique?.slice(0, 3),
+          sample_interactions: userVolumeData.interactions?.slice(0, 3)
+        });
+        
+        if (Array.isArray(userVolumeData.loads) && userVolumeData.loads.length > 1) {
+          volumeChartData = {
+            datasets: [
+              {
+                label: 'Widget Loads',
+                data: userVolumeData.loads,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+              },
+              {
+                label: 'Wallet Connects',
+                data: userVolumeData.connects,
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#22c55e',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+              },
+              {
+                label: 'Unique Wallets',
+                data: userVolumeData.unique,
+                borderColor: '#fde047',
+                backgroundColor: 'rgba(253, 224, 71, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#fde047',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+              }
+            ]
+          };
+          
+          if (userVolumeData.interactions && Array.isArray(userVolumeData.interactions)) {
+            volumeChartData.datasets.push({
+              label: 'User Interactions',
+              data: userVolumeData.interactions,
+              borderColor: '#8b5cf6',
+              backgroundColor: 'rgba(139, 92, 246, 0.1)',
+              tension: 0.4,
+              fill: false,
+              borderWidth: 2,
+              pointBackgroundColor: '#8b5cf6',
+              pointBorderColor: '#ffffff',
+              pointBorderWidth: 2,
+              pointRadius: 4
+            });
+          }
+          
+          console.log('✅ USER VOLUME CHART: Using real timeseries data', {
+            datasets_count: volumeChartData.datasets.length,
+            data_points_per_dataset: userVolumeData.loads.length
+          });
+        }
+        
+        let baseLoads = 0;
+        let baseConnects = 0; 
+        let baseUnique = 0;
+        let hasTimeseriesUserVolumeData = false;
+        let hasAggregateUserVolumeData = false;
+          
+        if (Array.isArray(userVolumeData.loads) && userVolumeData.loads.length > 0) {
+          const hasRealLoads = userVolumeData.loads.some(val => val > 0);
+          const hasRealConnects = userVolumeData.connects && userVolumeData.connects.some(val => val > 0);
+          const hasRealUnique = userVolumeData.unique && userVolumeData.unique.some(val => val > 0);
+          
+          hasTimeseriesUserVolumeData = hasRealLoads || hasRealConnects || hasRealUnique;
+          
+          console.log('📊: Timeseries user volume data analysis:', {
+            loads_array_length: userVolumeData.loads.length,
+            has_real_loads: hasRealLoads,
+            has_real_connects: hasRealConnects,
+            has_real_unique: hasRealUnique,
+            has_timeseries_data: hasTimeseriesUserVolumeData,
+            sample_loads: userVolumeData.loads.slice(0, 5),
+            sample_connects: userVolumeData.connects?.slice(0, 5),
+            sample_unique: userVolumeData.unique?.slice(0, 5)
+          });
+        }
+        
+        if (!hasTimeseriesUserVolumeData) {
+          baseLoads = userVolumeData.loads?.[0] || userVolumeData.loads || 0;
+          baseConnects = userVolumeData.connects?.[0] || userVolumeData.connects || 0;
+          baseUnique = userVolumeData.unique?.[0] || userVolumeData.unique || 0;
+          
+          hasAggregateUserVolumeData = baseLoads > 0 || baseConnects > 0 || baseUnique > 0;
+          
+          if (hasAggregateUserVolumeData) {
+            const realLoadsData = new Array(labels.length).fill(baseLoads);
+            const realConnectsData = new Array(labels.length).fill(baseConnects);
+            const realUniqueData = new Array(labels.length).fill(baseUnique);
+          
+          volumeChartData = {
+            datasets: [
+              {
+                label: 'Widget Loads',
+                  data: realLoadsData,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+              },
+              {
+                label: 'Wallet Connects',
+                  data: realConnectsData,
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#22c55e',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+              },
+              {
+                label: 'Unique Wallets',
+                  data: realUniqueData,
+                borderColor: '#fde047',
+                backgroundColor: 'rgba(253, 224, 71, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#fde047',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+              }
+            ]
+          };
+            
+            console.log('✅: Using REAL aggregate user volume data', {
+              loads: baseLoads,
+              connects: baseConnects,
+              unique: baseUnique
+            });
+          } else {
+            volumeChartData = {
+              datasets: [
+                {
+                  label: 'Widget Loads',
+                  data: [],
+                  borderColor: '#3b82f6',
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)'
+                },
+                {
+                  label: 'Wallet Connects',
+                  data: [],
+                  borderColor: '#22c55e',
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)'
+                },
+                {
+                  label: 'Unique Wallets',
+                  data: [],
+                  borderColor: '#fde047',
+                  backgroundColor: 'rgba(253, 224, 71, 0.1)'
+                }
+              ]
+            };
+            
+            console.log('📊: No real user volume data available - showing empty chart');
+          }
+        }
+        
+        if (hasTimeseriesUserVolumeData) {
+          updateDataSourceIndicator('userVolumeDataSource', true, 'REAL DATA');
+          console.log('✅: User volume data source indicator set to REAL DATA');
+        } else if (hasAggregateUserVolumeData) {
+          updateDataSourceIndicator('userVolumeDataSource', true, 'AGGREGATE DATA');
+          console.log('✅: User volume data source indicator set to AGGREGATE DATA');
+        } else {
+          updateDataSourceIndicator('userVolumeDataSource', false, 'NO DATA');
+          console.log('📊: User volume data source indicator set to NO DATA');
+        }
+        
+        charts.userVolume = new Chart(userVolumeCtx, {
+          type: 'line',
+          data: {
+            labels,
+            ...volumeChartData
+          },
+          options: {
+            ...chartDefaults,
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              ...chartDefaults.scales,
+              y: {
+                ...chartDefaults.scales.y,
+                beginAtZero: true,
+                ticks: {
+                  ...chartDefaults.scales.y.ticks,
+                  callback: function(value) {
+                    if (value >= 1000) {
+                      return (value / 1000).toFixed(1) + 'K';
+                    }
+                    return Math.round(value).toString();
+                  }
+                }
+              }
+            },
+            plugins: {
+              ...chartDefaults.plugins,
+              legend: {
+                ...chartDefaults.plugins.legend,
+                position: 'top',
+                align: 'start'
+              },
+              tooltip: {
+                ...chartDefaults.plugins.tooltip,
+                callbacks: {
+                  title: function(context) {
+                    return `Time: ${context[0].label}`;
+                  },
+                  label: function(context) {
+                    const value = context.parsed.y;
+                    const formattedValue = value >= 1000 ? (value / 1000).toFixed(1) + 'K' : Math.round(value).toString();
+                    return `${context.dataset.label}: ${formattedValue}`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      const rpcLatencyCtx = document.getElementById('rpcLatencyChart');
+      if (rpcLatencyCtx) {
+        if (charts.rpcLatency) charts.rpcLatency.destroy();
+        
+        let latencyP50Data, latencyP95Data;
+        let hasRealRPCData = false;
+        
+        if (Array.isArray(rpcLatencyData.p50) && Math.max(...rpcLatencyData.p50) > 0) {
+          latencyP50Data = rpcLatencyData.p50;
+          latencyP95Data = rpcLatencyData.p95;
+          hasRealRPCData = true;
+          console.log('✅: Using REAL RPC latency data');
+        } else {
+          latencyP50Data = [];
+          latencyP95Data = [];
+          hasRealRPCData = false;
+          console.log('📊: No real RPC data available - showing empty chart');
+        }
+        
+        updateDataSourceIndicator('rpcLatencyDataSource', hasRealRPCData, 'REAL DATA');
+        
+        charts.rpcLatency = new Chart(rpcLatencyCtx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'p50 Latency (Median)',
+                data: latencyP50Data,
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#22c55e',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+              },
+              {
+                label: 'p95 Latency (95th percentile)',
+                data: latencyP95Data,
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#f59e0b',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+              }
+            ]
+          },
+          options: {
+            ...chartDefaults,
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              ...chartDefaults.scales,
+              y: {
+                ...chartDefaults.scales.y,
+                beginAtZero: true,
+                ticks: {
+                  ...chartDefaults.scales.y.ticks,
+                  callback: value => Math.round(value) + 'ms'
+                }
+              }
+            },
+            plugins: {
+              ...chartDefaults.plugins,
+              legend: {
+                ...chartDefaults.plugins.legend,
+                position: 'top',
+                align: 'start'
+              },
+              tooltip: {
+                ...chartDefaults.plugins.tooltip,
+                callbacks: {
+                  title: function(context) {
+                    return `Time: ${context[0].label}`;
+                  },
+                  label: function(context) {
+                    const value = Math.round(context.parsed.y);
+                    return `${context.dataset.label}: ${value}ms`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      const cdnPerformanceCtx = document.getElementById('cdnPerformanceChart');
+      if (cdnPerformanceCtx) {
+        if (charts.cdnPerformance) charts.cdnPerformance.destroy();
+        
+        const cdnHistory = cdnMonitor.getCDNHistory(currentTimeRange);
+        
+        let cdnAvailabilityData, cdnResponseTimeData, cdnCacheHitData, cdnLabels;
+        let hasRealCDNData = false;
+        
+        if (cdnHistory.length > 0) {
+          cdnLabels = cdnHistory.map(point => {
+            const date = new Date(point.timestamp);
+            if (currentTimeRange === '1h') return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            if (currentTimeRange === '24h') return date.toLocaleTimeString('en-US', { hour: '2-digit' });
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          });
+          
+          cdnAvailabilityData = cdnHistory.map(point => point.availability);
+          cdnResponseTimeData = cdnHistory.map(point => point.responseTime);
+          cdnCacheHitData = cdnHistory.map(point => point.cacheHitRate);
+          
+          hasRealCDNData = true;
+          
+          console.log('✅: Using REAL historical CDN performance data', {
+            dataPoints: cdnHistory.length,
+            timeRange: currentTimeRange,
+            avgAvailability: Math.round(cdnAvailabilityData.reduce((a, b) => a + b, 0) / cdnAvailabilityData.length),
+            avgResponseTime: Math.round(cdnResponseTimeData.reduce((a, b) => a + b, 0) / cdnResponseTimeData.length),
+            avgCacheHitRate: Math.round(cdnCacheHitData.reduce((a, b) => a + b, 0) / cdnCacheHitData.length),
+            oldestPoint: new Date(cdnHistory[0].timestamp).toLocaleString(),
+            newestPoint: new Date(cdnHistory[cdnHistory.length - 1].timestamp).toLocaleString()
+          });
+        } else {
+          const cdnMetrics = cdnMonitor.getMetrics();
+          
+          if (cdnMetrics.availability > 0 && cdnMetrics.responseTime > 0) {
+            cdnLabels = ['Current'];
+            cdnAvailabilityData = [cdnMetrics.availability];
+            cdnResponseTimeData = [cdnMetrics.responseTime];
+            cdnCacheHitData = [cdnMetrics.cacheHitRate];
+            hasRealCDNData = true;
+            
+            console.log('📊: Using current CDN metrics (no history yet)', {
+              availability: cdnMetrics.availability,
+              responseTime: cdnMetrics.responseTime,
+              cacheHitRate: cdnMetrics.cacheHitRate
+            });
+          } else {
+            cdnLabels = [];
+            cdnAvailabilityData = [];
+            cdnResponseTimeData = [];
+            cdnCacheHitData = [];
+            hasRealCDNData = false;
+            
+            console.log('📊: No CDN data available - showing empty chart');
+          }
+        }
+        
+        const cdnDataSourceIndicator = document.getElementById('cdnDataSource');
+        if (cdnDataSourceIndicator) {
+          if (hasRealCDNData && cdnHistory.length > 1) {
+            cdnDataSourceIndicator.textContent = `REAL DATA (${cdnHistory.length} points)`;
+            cdnDataSourceIndicator.style.background = '#22c55e';
+            cdnDataSourceIndicator.title = `Real CDN performance data from ${cdnHistory.length} measurements`;
+          } else if (hasRealCDNData) {
+            cdnDataSourceIndicator.textContent = 'CURRENT DATA';
+            cdnDataSourceIndicator.style.background = '#f59e0b';
+            cdnDataSourceIndicator.title = 'Current CDN metrics (historical data building up)';
+          } else {
+            cdnDataSourceIndicator.textContent = 'NO DATA';
+            cdnDataSourceIndicator.style.background = '#ef4444';
+            cdnDataSourceIndicator.title = 'No CDN data available';
+          }
+        }
+        
+        charts.cdnPerformance = new Chart(cdnPerformanceCtx, {
+          type: 'line',
+          data: {
+            labels: cdnLabels.length > 0 ? cdnLabels : labels,
+            datasets: [
+              {
+                label: 'Availability (%)',
+                data: cdnAvailabilityData,
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#22c55e',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                yAxisID: 'y'
+              },
+              {
+                label: 'Response Time (ms)',
+                data: cdnResponseTimeData,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                yAxisID: 'y1'
+              },
+              {
+                label: 'Cache Hit Rate (%)',
+                data: cdnCacheHitData,
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointBackgroundColor: '#f59e0b',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                yAxisID: 'y'
+              }
+            ]
+          },
+          options: {
+            ...chartDefaults,
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            scales: {
+              x: {
+                ...chartDefaults.scales.x
+              },
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                min: 0,
+                max: 100,
+                grid: {
+                  color: 'rgba(148, 163, 184, 0.1)'
+                },
+                ticks: {
+                  color: '#94a3b8',
+                  font: {
+                    size: 11
+                  },
+                  callback: value => value + '%'
+                },
+                title: {
+                  display: true,
+                  text: 'Availability & Cache Hit Rate (%)',
+                  color: '#cbd5e1',
+                  font: {
+                    size: 12
+                  }
+                }
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                min: 0,
+                grid: {
+                  drawOnChartArea: false,
+                },
+                ticks: {
+                  color: '#94a3b8',
+                  font: {
+                    size: 11
+                  },
+                  callback: value => Math.round(value) + 'ms'
+                },
+                title: {
+                  display: true,
+                  text: 'Response Time (ms)',
+                  color: '#cbd5e1',
+                  font: {
+                    size: 12
+                  }
+                }
+              }
+            },
+            plugins: {
+              ...chartDefaults.plugins,
+              legend: {
+                ...chartDefaults.plugins.legend,
+                position: 'top',
+                align: 'start'
+              },
+              tooltip: {
+                ...chartDefaults.plugins.tooltip,
+                callbacks: {
+                  title: function(context) {
+                    return `Time: ${context[0].label}`;
+                  },
+                  label: function(context) {
+                    const value = Math.round(context.parsed.y);
+                    if (context.dataset.label.includes('Response Time')) {
+                      return `${context.dataset.label}: ${value}ms`;
+                    } else {
+                      return `${context.dataset.label}: ${value}%`;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+        
+        console.log('📊: CDN Performance Chart created', {
+          availability_points: cdnAvailabilityData.length,
+          response_time_points: cdnResponseTimeData.length,
+          cache_hit_points: cdnCacheHitData.length,
+          current_metrics: cdnMetrics
+        });
+      }
+    }
+
+    function updateSummaryCards(aggregateData, metrics) {
+      console.log('[HealthCheck] updateSummaryCards called with aggregateData:', aggregateData, 'and metrics:', metrics);
+
+      const updateCard = (tabId, cardLabel, valueFormatFn, metricName, comparisonName, isInverse = false) => {
+        const cardElement = Array.from(document.querySelectorAll(`#${tabId} .summary-card`)).find(card => {
+          const labelElement = card.querySelector('.summary-label');
+          return labelElement && labelElement.textContent.trim() === cardLabel;
+        });
+
+        if (!cardElement) {
+          console.warn(`[HealthCheck] Card with label "${cardLabel}" not found in tab "${tabId}".`);
+          return;
+      }
+      
+        const valueEl = cardElement.querySelector('.summary-value');
+        const changeEl = cardElement.querySelector('.summary-change');
+
+        if (valueEl && metrics && metrics[metricName] !== undefined) {
+          valueEl.textContent = valueFormatFn(metrics[metricName]);
+        } else if (valueEl) {
+          if (aggregateData && aggregateData.summary && aggregateData.summary[metricName] !== undefined) {
+             valueEl.textContent = valueFormatFn(aggregateData.summary[metricName]);
+          } else if (aggregateData && aggregateData.metrics && aggregateData.metrics[metricName] !== undefined) {
+            valueEl.textContent = valueFormatFn(aggregateData.metrics[metricName]);
+          } else {
+            valueEl.textContent = 'N/A';
+          }
+        }
+
+        if (changeEl && aggregateData && aggregateData.comparison && aggregateData.comparison[comparisonName]) {
+          const compData = aggregateData.comparison[comparisonName];
+          console.log(`[HealthCheck] Updating card "${cardLabel}": Found comparison data:`, compData);
+          changeEl.textContent = compData.value;
+          changeEl.className = 'summary-change ' + compData.className;
+        } else if (changeEl) {
+          console.log(`[HealthCheck] Updating card "${cardLabel}": No comparison data for '${comparisonName}'. Clearing change text.`);
+          changeEl.textContent = ''; 
+          changeEl.className = 'summary-change';
+        }
+      };
+
+      updateCard('performance-content', 'Load Success Rate', val => `${val.toFixed(1)}%`, 'load_success_rate', 'load_success_rate');
+      updateCard('performance-content', 'Avg. Time to Render', val => `${Math.round(val)}ms`, 'render_time_p50', 'render_time_p50', true);
+      
+      const renderCard = Array.from(document.querySelectorAll('#performance-content .summary-card')).find(card => {
+        const labelElement = card.querySelector('.summary-label');
+        return labelElement && labelElement.textContent.trim() === 'Avg. Time to Render';
+      });
+      
+      if (renderCard && metrics && metrics.is_maintained_render_times) {
+        const valueEl = renderCard.querySelector('.summary-value');
+        if (valueEl) {
+          valueEl.title = 'Maintained from last known render time (no recent activity)';
+          valueEl.style.fontStyle = 'italic';
+        }
+      }
+
+      updateCard('reliability-content', 'Wallet Connect Success', val => `${val.toFixed(1)}%`, 'wallet_connect_success_rate', 'wallet_connect_success_rate');
+      updateCard('reliability-content', 'Interaction Errors', val => `${Object.values(val).reduce((a,b) => a+b, 0)}`, 'interaction_errors', 'interaction_errors', true);
+      
+      console.log(`📋 RELIABILITY TAB UPDATED for ${currentTimeRange}:`, {
+        wallet_connect_success: metrics?.wallet_connect_success_rate,
+        interaction_errors: metrics?.interaction_errors,
+        comparison_available: !!(aggregateData?.comparison)
+      });
+      
+      updateCard('usage-content', 'Total Widget Loads', val => val > 1000 ? `${(val/1000).toFixed(1)}K` : `${val}`, 'total_loads', 'total_events');
+      updateCard('usage-content', 'Avg. RPC Latency', val => `${Math.round(val)}ms`, 'rpc_latency_p50', 'rpc_latency', true);
+    }
+
+    function initMetricsDashboard() {
+      const tabButtons = document.querySelectorAll('.metric-tab');
+      tabButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const metric = e.target.dataset.metric;
+          
+          tabButtons.forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          
+          document.querySelectorAll('.metric-content').forEach(content => {
+            content.classList.remove('active');
+          });
+          document.getElementById(`${metric}-content`).classList.add('active');
+        });
+      });
+
+      const timeRangeButtons = document.querySelectorAll('.time-range-btn');
+      timeRangeButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const oldTimeRange = currentTimeRange;
+          currentTimeRange = e.target.dataset.range;
+          
+          console.log(`🔄 TIME RANGE CHANGED: ${oldTimeRange} → ${currentTimeRange}`);
+          console.log('📊 This should update BOTH summary cards AND charts on all tabs');
+          
+          timeRangeButtons.forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          
+          createCharts();
+        });
+      });
+
+      createCharts();
+
+      setInterval(() => {
+        createCharts();
+      }, 30000);
+    }
+
+    function updateDataSourceIndicator(elementId, hasData, dataType) {
+      const indicator = document.getElementById(elementId);
+      if (!indicator) return;
+      
+      if (hasData) {
+        if (dataType === 'REAL DATA') {
+          indicator.style.background = '#22c55e';
+          indicator.textContent = 'REAL DATA';
+        } else if (dataType === 'AGGREGATE DATA') {
+          indicator.style.background = '#f59e0b';
+          indicator.textContent = 'AGGREGATE DATA';
+        } else if (dataType === 'MIXED DATA') {
+          indicator.style.background = '#f59e0b';
+          indicator.textContent = 'MIXED DATA';
+        }
+      } else {
+        indicator.style.background = '#ef4444';
+        indicator.textContent = 'NO DATA';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initMetricsDashboard();
+      
+      startCDNMonitoring();
+    });
+
+    function updateRealMetricsCount() {
+      if (window.nebulaRealMetrics) {
+        const allMetrics = window.nebulaRealMetrics.getMetrics(0);
+        const countElement = document.getElementById('real-metrics-count');
+        if (countElement) {
+          countElement.textContent = allMetrics.length;
+        }
+      }
+    }
+
+    function viewRealMetrics() {
+      const viewer = document.getElementById('metrics-viewer');
+      const dataEl = document.getElementById('metrics-data');
+      
+      if (window.nebulaRealMetrics) {
+        const metrics = window.nebulaRealMetrics.getMetrics(0);
+        const summary = {
+          total_events: metrics.length,
+          widget_loads: metrics.filter(m => m.type === 'widget_load').length,
+          widget_views: metrics.filter(m => m.type === 'widget_view').length,
+          wallet_connects: metrics.filter(m => m.type === 'wallet_connect').length,
+          interactions: metrics.filter(m => m.type === 'interaction').length,
+          last_10_events: metrics.slice(-10).reverse()
+        };
+        
+        dataEl.textContent = JSON.stringify(summary, null, 2);
+        viewer.style.display = viewer.style.display === 'none' ? 'block' : 'none';
+      } else {
+        dataEl.textContent = 'No metrics collector initialized yet. The widget needs to load first.';
+        viewer.style.display = 'block';
+      }
+    }
+
+    function clearRealMetrics() {
+      if (window.nebulaRealMetrics && confirm('Clear all collected metrics?')) {
+        window.nebulaRealMetrics.clearMetrics();
+        updateRealMetricsCount();
+        
+        const viewer = document.getElementById('metrics-viewer');
+        if (viewer.style.display !== 'none') {
+          viewRealMetrics();
+        }
+      }
+    }
+
+    setInterval(updateRealMetricsCount, 5000);
+  </script>
+</body>
+</html> 

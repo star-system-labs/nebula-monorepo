@@ -47,13 +47,16 @@ const messages = {
       vesttokens: 'Vest Tokens',
       emergencywithdraw: 'Emergency Withdraw',
       pleaseselect: 'Please select a slot',
+      limitexceeded: 'Limit Exceeded',
       sdivrewardscomingsoon: 'SDIV Rewards Coming Soon',
       sdivcomingsoon: 'SDIV COMING SOON',
       nostakingslots: 'No active staking slots',
       novestingslots: 'No active vesting slots',
       vestingslots: 'Vesting Slots',
       vestingperiod: 'Vesting Period:',
-      mineppepe: 'Mine PPePe',
+      mineppepe: 'Cope Harder',
+      value: '$',
+      ethvalue: 'ETH'
     }
   },
   cn: {
@@ -98,6 +101,7 @@ const messages = {
       vesttokens: '背心代币',
       emergencywithdraw: '紧急提款',
       pleaseselect: '请选择一个槽位',
+      limitexceeded: '限制超出',
       sdivrewardscomingsoon: 'SDIV奖励即将到来',
       sdivcomingsoon: 'SDIV即将推出',
       nostakingslots: '没有活跃的质押槽位',
@@ -105,6 +109,8 @@ const messages = {
       vestingslots: '归属槽位', // 归属槽
       vestingperiod: '归属期限:',
       mineppepe: '矿用PPePe',
+      value: '$',
+      ethvalue: 'ETH'
     }
   },
   sp: {
@@ -154,7 +160,7 @@ const messages = {
       novestingslots: 'No active vesting slots',
       vestingslots: 'Vesting Slots',
       vestingperiod: 'Vesting Period:',
-      mineppepe: 'Mine PPePe',
+      mineppepe: 'Cope Harder',
     }
   },
 };

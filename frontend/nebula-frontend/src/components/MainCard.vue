@@ -10,7 +10,7 @@
           'bg-button border-custom-blue text-yellow-300 font-medium shadow-custom-blue': selectedCard === 'mine', 
           'text-custom-blue-inactive bg-button-inactive': selectedCard !== 'mine' 
         }" 
-        class="border-custom-blue w-full h-10 flex items-center justify-center px-2 sm:px-8 py-2 text-xs sm:text-base rounded-lg cursor-pointer transition-colors ease-in-out duration-300 hover:bg-button-hover active:bg-button-active"
+        class="border-custom-blue w-full h-10 flex items-center justify-center px-2 sm:px-8 py-2 text-sm sm:text-md md:text-lg lg:text-lg rounded-lg cursor-pointer transition-colors ease-in-out duration-300 hover:bg-button-hover active:bg-button-active"
       >
         {{ $t('message.mine') }}
       </button>
@@ -20,7 +20,7 @@
           'bg-button border-custom-blue text-yellow-300 font-medium shadow-custom-blue': selectedCard === 'claim',
           'text-custom-blue-inactive bg-button-inactive': selectedCard !== 'claim'
         }" 
-        class="border-custom-blue w-full h-10 flex items-center justify-center px-2 sm:px-8 py-2 text-xs sm:text-base rounded-lg cursor-pointer transition-colors ease-in-out duration-300 hover:bg-button-hover active:bg-button-active"
+        class="border-custom-blue w-full h-10 flex items-center justify-center px-2 sm:px-8 py-2 text-sm sm:text-md md:text-lg lg:text-lg rounded-lg cursor-pointer transition-colors ease-in-out duration-300 hover:bg-button-hover active:bg-button-active"
       >
         {{ $t('message.claim') }}
       </button>
@@ -30,7 +30,7 @@
           'bg-button border-custom-blue text-yellow-300 font-medium shadow-custom-blue': selectedCard === 'stake',
           'text-custom-blue-inactive bg-button-inactive': selectedCard !== 'stake'
         }" 
-        class="border-custom-blue w-full h-10 flex items-center justify-center px-2 sm:px-8 py-2 text-xs sm:text-base rounded-lg cursor-pointer transition-colors ease-in-out duration-300 hover:bg-button-hover active:bg-button-active"
+        class="border-custom-blue w-full h-10 flex items-center justify-center px-2 sm:px-8 py-2 text-sm sm:text-md md:text-lg lg:text-lg rounded-lg cursor-pointer transition-colors ease-in-out duration-300 hover:bg-button-hover active:bg-button-active"
       >
         {{ $t('message.earn') }}
       </button>
@@ -38,12 +38,14 @@
 
       <div v-if="selectedCard === 'mine'" class="flex flex-col justify-center w-full">
       <MinerCard 
+        v-if="selectedCard === 'mine'"
         :ethBalance="ethBalance" 
         :ppepeBalance="ppepeBalance" 
         :abbreviatedPpepeBalance="abbreviatedPpepeBalance"
         :accountAddress="accountAddress" 
         @amountChanged="handleAmountChanged" 
-        @connect="$emit('connect')" 
+        @connect="handleConnect"
+        @updateBalances="$emit('updateBalances')"
       />
       <div class="mt-4 text-yellow-300 font-origin font-semibold md:text-md lg:text-lg">
         {{ displayMessage }}
@@ -65,7 +67,7 @@
             :shiblpBalance="shiblpBalance"
             :ppepelpBalance="ppepelpBalance"
             :contract-addresses="currentContractAddresses"
-            @connect="$emit('handleConnect')"
+            @connect="handleConnect"
             />
             <div class="mt-4 text-yellow-300 font-origin font-semibold md:text-md lg:text-lg">
         {{ displayMessage }}
@@ -88,7 +90,7 @@
             :shiblpBalance="shiblpBalance"
             :ppepelpBalance="ppepelpBalance"
             :contract-addresses="currentContractAddresses"
-            @connect="$emit('connect')"
+            @connect="handleConnect"
             @updateBalances="handleUpdateBalances"
             />
             <div class="mt-4 text-yellow-300 font-origin font-semibold md:text-md lg:text-lg">
@@ -102,6 +104,7 @@
   import ClaimCard from './ClaimCard.vue';
   import StakeCard from './StakeCard.vue';
   import MinerCard from './MinerCard.vue';
+  import widgetAnalytics from '@/utils/widgetAnalytics';
   
   export default {
     name: 'MainCard',
@@ -113,7 +116,8 @@
     data() {
       return {
         selectedCard: 'mine',
-        showCopeSequence: false
+        showCopeSequence: false,
+        selectedToken: 'PPePe'
       };
     },
     props: {
@@ -168,15 +172,41 @@
       },
     },
     methods: {
-      handleUpdateBalances(newBalances) {
-        this.$emit('updateBalances', newBalances);
+      async handleUpdateBalances(balances) {
+        try {
+          await this.$emit('updateBalances', balances);
+        } catch (error) {
+          console.error('Balance update error:', error);
+        }
       },
       setSelectedCard(card) {
         this.selectedCard = card;
         localStorage.setItem('selectedCard', card);
+        
+        widgetAnalytics.trackInteraction('card_select', true, {
+          cardType: card,
+          previousCard: this.selectedCard,
+          timestamp: Date.now()
+        });
       },
       toggleCopeSequence() {
         this.showCopeSequence = !this.showCopeSequence;
+      },
+      async handleConnect() {
+        try {
+          await this.$emit('connect');
+        } catch (error) {
+          console.error('Connection error:', error);
+        }
+      },
+      async handleAmountChanged(amount) {
+        try {
+          await this.$emit('amountChanged', amount);
+        } catch (error) {
+        }
+      },
+      setSelectedToken(token) {
+        this.selectedToken = token
       }
     },
     computed: {
@@ -192,6 +222,12 @@
           default:
             return this.$t('message.mememore');
         }
+      },
+      selectedTokenBalance() {
+        return '0.00'
+      },
+      currentContractAddresses() {
+        return {}
       }
     },
     mounted() {

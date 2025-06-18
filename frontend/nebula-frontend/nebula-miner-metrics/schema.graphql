@@ -1,0 +1,25 @@
+type Miner @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  base: BigInt!
+  balance: BigInt!
+  frequency: BigInt!
+  held: BigInt!
+  debt: BigInt!
+  totalMined: BigInt!
+  lastMiningTimestamp: BigInt!
+  efficiency: BigDecimal!
+  debtRatio: BigDecimal!
+  totalScore: BigInt!
+}
+
+type MiningTransaction @entity(immutable: true) {
+  id: ID!
+  miner: Miner!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  amountETH: BigInt!
+  liquidityAdded: BigInt!
+  allotment: BigInt!
+  quote: BigInt!
+}

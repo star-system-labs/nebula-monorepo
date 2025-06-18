@@ -1,0 +1,27 @@
+specVersion: 1.3.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: MiningRig
+    network: mainnet
+    source:
+      address: "0xe9C5A35BefC36E8B35B93470C034caf0a8E94308"
+      abi: MiningRig
+      startBlock: 18202327
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      file: ./src/mining-rig.ts
+      entities:
+        - Miner
+        - MiningTransaction
+      abis:
+        - name: MiningRig
+          file: ./abis/MiningRigABI.json
+      callHandlers:
+        - function: mineLiquidity(uint256)
+          handler: handleMineLiquidity

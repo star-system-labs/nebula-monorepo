@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-50 p-5 rounded-xl w-full mx-auto">
+  <div class="relative flex flex-col items-center border-1 border-custom-blue justify-between bg-card-blue bg-opacity-50 p-5 rounded-xl w-full mx-auto">
     <div class="rig-toggle flex cursor-pointer mb-4 rounded-xl overflow-hidden border-2 border-custom-blue shadow-md relative" @click="toggleMiningRig">
       <div class="absolute left-0 top-0 h-full w-1/2 bg-button-active rounded-xl transition-all duration-300" 
         :class="selectedMiningRig === 'PePe' ? 'left-0' : 'left-1/2'"></div>
@@ -7,18 +7,18 @@
         :class="selectedMiningRig === 'PePe' ? 'text-yellow-300' : 'text-custom-blue-inactive'" 
         class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10"
         @click="setSelectedToken('PePe')"
-      ><img :src="require('@/assets/pepe.png')" alt="Currency Logo" class="w-6 h-6 rounded-full mr-2">PePe</div>
+      ><img :src="require('@/assets/pepe.webp')" alt="Currency Logo" class="w-6 h-6 rounded-full mr-2">PePe</div>
       <div 
-        :class="selectedMiningRig === 'Pond' ? 'text-yellow-300' : 'text-custom-blue-inactive'" 
+        :class="selectedMiningRig === 'Shiba' ? 'text-yellow-300' : 'text-custom-blue-inactive'" 
         class="flex text-center py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10"
-        @click="setSelectedToken('Pond')"
-      >Pond <img :src="require('@/assets/pond.png')" alt="Currency Logo" class="w-6 h-6 rounded-full ml-2"></div>
+        @click="setSelectedToken('Shiba')"
+      >Shiba <img :src="require('@/assets/shiba.webp')" alt="Currency Logo" class="w-6 h-6 object-contain ml-2"></div>
     </div>
     <TokenInputCard 
       class="w-[350px] mb-1 text-teal font-origin"
       currency="ETH"
       :label="$t('message.yousupply')"
-      :currencyLogo="require('@/assets/eth.png')"
+      :currencyLogo="require('@/assets/eth.webp')"
       :balance="ethBalance"
       :isEditable="true"
       @amountChanged="handleAmountChanged"
@@ -26,31 +26,24 @@
       :accountAddress="accountAddress"
     />
 
-    <transition name="expand">
-      <div 
-      class="cope-sequence cursor-pointer absolute left-1/2
-        transform -translate-x-1/2 sm:-translate-x-1/2 -translate-y-[-5%]
-        sm:-translate-y-[10%] md:-translate-y-[10%] 
-        lg:-translate-y-[15.5%] scale-x-[1] transition-transform
-        duration-500 ease-in-out rounded-xl h-10 max-w-[90vw]
-        sm:max-w-[70vw] md:max-w-[50vw] lg:max-w-[40vw] xl:max-w-[32vw]
-        flex items-center justify-center bg-card-blue bg-opacity-88
-        text-custom-blue font-bold border-2 border-custom-blue
-        shadow-md z-2 overflow-hidden whitespace-nowrap sm:p-2"
-        @click="toggleCopeSequence"
-      >
-    <span v-show="!showCopeSequence" class="w-full text-center text-xs my-xs-1 mx-1 text-yellow-300 sm:px-2.5 font-origin">
-      {{ $t('message.mineppepe') }}
-    </span>
-    <div v-show="showCopeSequence" class="flex gap-2.5 w-full justify-center items-center px-2.5">
-      <img class="max-h-6 md:max-h-6 lg:max-h-8 w-auto" :src="require('@/assets/eth.png')" alt="ETH">
-      <div class="arrow"></div>
-      <img class="max-h-9 md:max-h-9 lg:max-h-10 w-auto" :src="supplyImageSrc" alt="Supply">
-      <div class="arrow"></div>
-      <img class="max-h-6 md:max-h-6 lg:max-h-8 w-auto" :src="require('@/assets/ppepe.png')" alt="PPePe">
+    <div 
+      ref="copeSequence"
+      class="cope-sequence cursor-pointer relative mx-auto rounded-xl h-10 flex items-center justify-center bg-card-blue bg-opacity-88 text-custom-blue font-bold border-2 border-custom-blue shadow-md z-2 overflow-hidden whitespace-nowrap sm:p-2"
+      :class="{'timer-visible': !accountAddress || (accountAddress && (!isInputValidForMining || !isMiningPhaseActive)), 'timer-hidden': accountAddress && isInputValidForMining && isMiningPhaseActive}"
+      @click="toggleCopeSequence"
+      style="width: 160px;"
+    >
+      <span v-show="!showCopeSequence" class="cope-text w-full text-center text-xs my-xs-1 mx-1 text-yellow-300 sm:px-2.5 font-origin font-light">
+        {{ $t('message.mineppepe') }}
+      </span>
+      <div v-show="showCopeSequence" class="cope-images flex gap-2.5 w-full justify-center items-center px-2.5">
+        <img class="max-h-6 md:max-h-6 lg:max-h-8 w-auto" :src="require('@/assets/eth.webp')" alt="ETH">
+        <div class="arrow"></div>
+        <img class="max-h-9 md:max-h-9 lg:max-h-10 w-auto" :src="supplyImageSrc" alt="Supply">
+        <div class="arrow"></div>
+        <img class="max-h-6 md:max-h-6 lg:max-h-8 w-auto" :src="require('@/assets/ppepe.webp')" alt="PPePe">
+      </div>
     </div>
-  </div>
-</transition>
 
     <TokenInputCard 
       class="w-[350px] mb-4 text-teal font-origin"
@@ -65,12 +58,19 @@
       :isMaxSelectable="false"
     />
     
-    <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mt-5"/>
+    <div v-if="!accountAddress || (accountAddress && (!isInputValidForMining || !isMiningPhaseActive))" 
+         class="mining-timer-container text-yellow-300 font-origin text-center w-full mb-2">
+      <div class="mining-timer-text">MINING PHASE: {{ formattedTime }}</div>
+    </div>
+    
+    <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" :isConnecting="isConnecting" class="mt-5"/>    
     <MineButton v-else
       :contractAddress="selectedContractAddress"
       :enteredAmount="enteredAmountData"
       :walletBalance="walletBalanceData"
+      ref="mineButton"
       @mine="handleMine"
+      @updateBalances="$emit('updateBalances')"
       @quoteObtained="handleQuoteObtained"
     />
   </div>
@@ -80,11 +80,12 @@
 import ConnectWalletButton from './ConnectWalletButton.vue';
 import TokenInputCard from './TokenInputCard.vue';
 import MineButton from './MineButton.vue';
+import { gsap } from 'gsap';
 const { Token, CurrencyAmount } = require('@uniswap/sdk-core');
 import { Pair } from '@uniswap/v2-sdk';
 import { ethers } from 'ethers';
-import supplyPepe from '@/assets/supply-pepe.png';
-import supplyPond from '@/assets/supply-pond.png';
+import supplyPepe from '@/assets/supply-pepe.webp';
+import supplyShiba from '@/assets/supply-shiba.webp';
 
 const chainId = 1;
 const PEPE_ADDRESS = '0x6982508145454ce325ddbe47a25d4ec3d2311933';
@@ -93,7 +94,6 @@ console.log("!!!! MR. PEPE: ", PEPE.address);
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const WETH = new Token(1, WETH_ADDRESS, 18, 'WETH', 'Wrapped Ether');
 console.log("!!!!WETH: ", WETH.address);
-//const pair = '0xA43fe16908251ee70EF74718545e4FE6C5cCEc9f';
 
 export default {
   components: {
@@ -117,7 +117,8 @@ export default {
     accountAddress: {
       type: String,
       default: null
-    }
+    },
+    isConnecting: Boolean,
   },
   data() {
     return {
@@ -125,23 +126,28 @@ export default {
       estimatedReward: 0,
       liquidityEstimate: 0,
       selectedToken: "PePe",
-      //accountAddress: null,
       showCopeSequence: false,
       enteredAmountData: '0.00',
       walletBalanceData: '0.00',
       selectedMiningRig: 'PePe', // Default
-      PEPE_ADDRESS: '0xe9C5A35BefC36E8B35B93470C034caf0a8E94308',
-      POND_ADDRESS: '0x11541e990036ec13D521d584F098a83bD0F4BFC3',
+      PEPE_ADDRESS: '0xe9C5A35BefC36E8B35B93470C034caf0a8E94308', // pepe miner
+      SHIB_ADDRESS: '0x11541e990036ec13D521d584F098a83bD0F4BFC3', // shib miner
       supplyPepe,
-      supplyPond,
+      supplyShiba,
       localQuote: null,
       quote: null,
-      localPpepeBalance: this.ppepeBalance
+      localPpepeBalance: this.ppepeBalance,
+      timeRemaining: null,
+      timer: null,
+      launchDate: '2025-08-17T12:00:00',
+      endTime: new Date('2025-08-17T12:00:00').getTime(),
     };
   },
   methods: {
     async fetchPairData() {
-      const rpcUrl = process.env.ALCHEMY_RPC;
+      //const rpcUrl = process.env.VUE_APP_ALCHEMY_RPC;
+      const rpcUrl = process.env.VUE_APP_INFURA_RPC;
+      console.log("RPC URL:", rpcUrl, process.env.VUE_APP_INFURA_RPC, process.env.VUE_APP_ALCHEMY_RPC);
       const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, {
         staticNetwork: true
       });
@@ -175,7 +181,8 @@ export default {
       return pair;
     },
     async swapQuote(ethAmount) {
-      const rpcUrl = process.env.ALCHEMY_RPC;
+      //const rpcUrl = process.env.VUE_APP_ALCHEMY_RPC;
+      const rpcUrl = process.env.VUE_APP_INFURA_RPC;
       const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, {
         staticNetwork: true
       });
@@ -206,6 +213,7 @@ export default {
       return estimatedTokens/2;
       } catch (error) {
         console.error("Error getting swap estimate:", error);
+        return (Number(ethAmount) * 50000).toString();
       }
     },
     async estimateAddLiquidity(swappedAmtOut, ethAmount) {
@@ -261,6 +269,10 @@ export default {
       console.log('estimatedReward set:', this.estimatedReward);
     },
     abbreviateNumber(value) {
+      if (value === null || value === undefined || value === '' || isNaN(parseFloat(value))) {
+        return '0.00';
+      }
+      
       let newValue = parseFloat(value);
       if (newValue >= 1e12) {
         return (newValue / 1e12).toFixed(2) + "T";
@@ -271,7 +283,7 @@ export default {
       } else if (newValue >= 1e3) {
         return (newValue / 1e3).toFixed(2) + "K";
       } else {
-        return newValue.toString();
+        return newValue.toFixed(2);
       }
     },
     handleQuoteObtained(quote) {
@@ -281,6 +293,9 @@ export default {
     handleMining() {
         this.$emit('mine');
     },
+    handleMine() {
+      this.$emit('mine');
+    },
     handleAmountChanged(value) {
       console.log("Amount Changed: ", value)
       this.enteredAmountData = value;
@@ -288,22 +303,115 @@ export default {
       this.walletBalanceData = this.ethBalance;
     },
     getTokenLogo(token) {
-      if (token === "PePe") return require('@/assets/ppepe.png');
-      if (token === "Pond") return require('@/assets/ppepe.png');
+      if (token === "PePe") return require('@/assets/ppepe.webp');
+      if (token === "Shiba") return require('@/assets/ppepe.webp');
       return '';
     },
+    getCopeWidths() {
+      if (window.innerWidth <= 640) {
+        return { collapsed: 120, expanded: 200 };
+      } else {
+        return { collapsed: 125, expanded: 230 };
+      }
+    },
     toggleCopeSequence() {
-      this.showCopeSequence = !this.showCopeSequence;
+      const tl = gsap.timeline();
+      const copeEl = this.$refs.copeSequence;
+      const { collapsed, expanded } = this.getCopeWidths();
+      
+      if (!this.showCopeSequence) {
+        // Expanding: text → images
+        tl.to(copeEl, { 
+          width: `${expanded}px`, 
+          duration: 0.4, 
+          ease: "power2.out" 
+        })
+        .call(() => {
+          this.showCopeSequence = true;
+        }, [], 0.2)
+        .fromTo('.cope-images', {
+          opacity: 0,
+          scale: 0.8,
+        }, {
+          opacity: 1,
+          scale: 1,
+          duration: 0.3,
+          ease: "back.out(1.7)"
+        }, 0.2);
+      } else {
+        // Collapsing: images → text  
+        tl.to('.cope-images', {
+          opacity: 0,
+          scale: 0.8,
+          duration: 0.2,
+          ease: "power2.in"
+        })
+        .call(() => {
+          this.showCopeSequence = false;
+          gsap.set('.cope-images', { clearProps: "all" });
+        }, [], 0.2)
+        .to(copeEl, {
+          width: `${collapsed}px`,
+          duration: 0.4,
+          ease: "power2.out"
+        }, 0.1)
+        .fromTo('.cope-text', {
+          opacity: 0
+        }, {
+          opacity: 1,
+          duration: 0.3,
+          ease: "power2.out"
+        }, 0.3);
+      }
     },
     toggleMiningRig() {
       this.selectedMiningRig = this.nextMiningRig;
     },
     setSelectedToken(token) {
       this.selectedToken = token;
-    }
+    },
+    updateTimer() {
+      const now = new Date().getTime();
+      this.timeRemaining = Math.max(0, this.endTime - now);
+      
+      if (this.timeRemaining <= 0) {
+        clearInterval(this.timer);
+        this.$emit('countdown-complete');
+      }
+    },
+    setEndTime(newEndTime) {
+      this.endTime = newEndTime;
+      this.updateTimer();
+    },
+    setLaunchDate(dateString) {
+      this.launchDate = dateString;
+      this.endTime = new Date(dateString).getTime();
+      this.updateTimer();
+    },
+    async handleUpdateBalances() {
+      try {
+        await this.$emit('updateBalances');
+      } catch (error) {
+        console.log('Balance update propagated');
+      }
+    },
   },
   mounted() {
     this.walletBalanceData = this.ethBalance;
+    this.updateTimer();
+    this.timer = setInterval(this.updateTimer, 1000);
+    this.$nextTick(() => {
+      if (this.$refs.copeSequence) {
+        const { collapsed } = this.getCopeWidths();
+        this.$refs.copeSequence.style.width = `${collapsed}px`;
+      }
+      if (this.accountAddress && this.$refs.mineButton) {
+        this.$refs.mineButton.setLaunchDate(this.launchDate);
+      }
+    });
+  },
+  beforeUnmount() {
+    clearInterval(this.timer);
   },
   watch: {
     ethAmount(newVal, oldVal) {
@@ -317,17 +425,42 @@ export default {
     },
     ppepeBalance(newVal) {
       this.localPpepeBalance = newVal;
-   }
+    },
+    accountAddress(newVal) {
+      if (newVal && this.$refs.mineButton) {
+        this.$refs.mineButton.setLaunchDate(this.launchDate);
+      }
+    }
   },
   computed: {
     supplyImageSrc() {
-      return this.selectedToken === "PePe" ? this.supplyPepe : this.supplyPond;
+      return this.selectedToken === "PePe" ? this.supplyPepe : this.supplyShiba;
     },
     selectedContractAddress() {
-      return this.selectedMiningRig === 'PePe' ? this.PEPE_ADDRESS : this.POND_ADDRESS;
+      return this.selectedMiningRig === 'PePe' ? this.PEPE_ADDRESS : this.SHIB_ADDRESS;
     },
     nextMiningRig() {
-      return this.selectedMiningRig === 'PePe' ? 'Pond' : 'PePe';
+      return this.selectedMiningRig === 'PePe' ? 'Shiba' : 'PePe';
+    },
+    formattedTime() {
+      if (this.timeRemaining <= 0) {
+        return '00D 00H 00M 00S';
+      }
+      
+      const days = Math.floor(this.timeRemaining / (24 * 60 * 60 * 1000));
+      const hours = Math.floor((this.timeRemaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+      const minutes = Math.floor((this.timeRemaining % (60 * 60 * 1000)) / (60 * 1000));
+      const seconds = Math.floor((this.timeRemaining % (60 * 1000)) / 1000);
+      
+      return `${days.toString().padStart(2, '0')}D ${hours.toString().padStart(2, '0')}HR ${minutes.toString().padStart(2, '0')}MIN ${seconds.toString().padStart(2, '0')}SEC`;
+    },
+    isMiningPhaseActive() {
+      return this.timeRemaining > 0;
+    },
+    isInputValidForMining() {
+      const amount = parseFloat(this.enteredAmountData);
+      const limit = 5; 
+      return !isNaN(amount) && amount > 0 && amount <= limit;
     }
   }
 }
@@ -400,49 +533,58 @@ export default {
 }
 
 .cope-sequence {
-  top: 51.55%; 
-  left: 50%;
+  --overlap-offset: -1.25rem;
+  
+  --mobile-fine-tune: 0px;
+  --tablet-fine-tune: 0px; 
+  --desktop-fine-tune: 0px;
+  --large-fine-tune: 0px;
+  
+  margin-top: var(--overlap-offset);
+  margin-bottom: var(--overlap-offset);
+  top: var(--mobile-fine-tune);
+  
+  transition: none;
 }
 
-/* Adjustments for screens with width <= 1280px */
-@media (max-width: 1280px) {
+@media (min-width: 640px) {
   .cope-sequence {
-    top: 51.55%;
+    top: var(--tablet-fine-tune);
   }
 }
 
-/* Adjustments for screens with width <= 1024px */
-@media (max-width: 1024px) {
+@media (min-width: 1024px) {
   .cope-sequence {
-    top: 51.55%;
+    top: var(--desktop-fine-tune);
   }
 }
 
-/* Adjustments for screens with width <= 768px */
-@media (max-width: 768px) {
+@media (min-width: 1280px) {
   .cope-sequence {
-    top: 51.55%;
+    top: var(--large-fine-tune);
   }
 }
 
-/* Adjustments for screens with width <= 640px */
-@media (max-width: 640px) {
-  .cope-sequence {
-    top: 50.75%;
-  }
+.cope-sequence.timer-visible {
+  transform: translateY(-1px);
 }
 
-/* Adjustments for screens with width <= 300px */
-@media (max-width: 300px) {
-  .cope-sequence {
-    top: 48.55%;
-  }
+.cope-sequence.timer-hidden {
+  transform: translateY(1px);
 }
 
-/* Adjustments for screens with width <= 280px */
-@media (max-width: 280px) {
-  .cope-sequence {
-    top: 46.75%;
-  }
+.mining-timer-container {
+  font-weight: bold;
 }
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.countdown-ending {
+  animation: pulse 1s infinite;
+}
+
 </style>

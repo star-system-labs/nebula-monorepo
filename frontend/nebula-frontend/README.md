@@ -1,4 +1,4 @@
-# Nebula
+# Nebula Frontend
 
 ## Project setup
 ```
@@ -20,5 +20,23 @@ npm run build
 npm run lint
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+## Web Component Deployment
+To build and deploy Nebula as a web component for embedding in Webflow:
+
+1. Build the web component:
+```
+npm run prepare:webcomponent
+```
+
+2. Deploy:
+   - Manual Deploy:
+     - Use the `dist` folder
+
+3. After deployment, embed:
+   - Add this code:
+   ```html
+   <script src="https://nebula.starsystemlabs.com/js/nebula-app.min.js"></script>
+   <nebula-app></nebula-app>
+   ```
+
+

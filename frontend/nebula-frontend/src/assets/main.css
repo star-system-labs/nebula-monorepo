@@ -9,27 +9,27 @@
 
 @font-face {
   font-family: 'NixieOne';
-  src: url('./NixieOne.ttf') format('truetype');
+  src: url('./fonts/NixieOne.ttf') format('truetype');
 }
 
 @font-face {
   font-family: 'OriginTech';
-  src: url('./OriginTech.ttf') format('truetype');
+  src: url('./fonts/OriginTech.ttf') format('truetype');
 }
 
 @font-face {
   font-family: 'SpaceAge';
-  src: url('./spaceage.ttf') format('truetype');
+  src: url('./fonts/spaceage.ttf') format('truetype');
 }
 
 @font-face {
   font-family: 'Tesla';
-  src: url('./Tesla.ttf') format('truetype');
+  src: url('./fonts/Tesla.ttf') format('truetype');
 }
 
 @font-face {
   font-family: 'Dune';
-  src: url('./Dune.ttf') format('truetype');
+  src: url('./fonts/Dune.ttf') format('truetype');
 }
 
 *,

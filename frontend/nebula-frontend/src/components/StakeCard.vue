@@ -6,13 +6,13 @@
        <div class="absolute left-0 top-0 h-full w-1/2 bg-button-active rounded-xl transition-all duration-300"
             :class="selectedOption === 'Staking' ? 'left-0' : 'left-1/2'"></div>
        <div 
-         class="flex py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs md:text-sm lg:text-lg"
+         class="flex py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs sm:text-sm md:text-md lg:text-lg"
          :class="selectedOption === 'Staking' ? 'text-yellow-300' : 'text-custom-blue-inactive'"
          @click="setSelectedOption('Staking')">
          {{ $t('message.lpstaking') }}
        </div>
        <div 
-         class="flex py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs md:text-sm lg:text-lg"
+         class="flex py-2 px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs sm:text-sm md:text-md lg:text-lg"
          :class="selectedOption === 'Vesting' ? 'text-yellow-300' : 'text-custom-blue-inactive'"
          @click="setSelectedOption('Vesting')">
          {{ $t('message.vesting') }}
@@ -24,9 +24,9 @@
        <div v-for="(currency, index) in currencies"
             :key="currency"
             :class="selectedToken === currency ? 'text-yellow-300' : 'text-custom-blue-inactive'"
-            class="flex items-center justify-center text-center py-1 px-4 sm:px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs md:text-sm lg:text-lg"
+            class="flex items-center justify-center text-center py-1 px-4 sm:px-8 font-bold font-origin transition-colors duration-300 ease-in-out z-10 text-xs sm:text-sm md:text-md lg:text-lg"
             @click.stop="setSelectedCurrency(currency)">
-         <img :src="currencyLogos[index]" alt="Currency Logo" class="w-6 h-6 rounded-full mr-2">{{ currency }}
+         <img :src="currencyLogos[index]" alt="Currency Logo" :class="currency === 'Shib' ? 'w-6 h-6 object-contain mr-2' : 'w-6 h-6 rounded-full mr-2'">{{ currency }}
        </div>
       </div>
      </div>
@@ -50,7 +50,22 @@
        :isMaxSelectable="true"
        @amountChanged="handleAmountChanged"
        :accountAddress="accountAddress"
+       :showGasPrice="true"
      />
+
+     <div v-if="(!isSDIVSelected && (!accountAddress || (accountAddress && (!isInputValidForStaking || !isStakingPhaseActive))))" 
+          class="staking-timer-container text-yellow-300 font-origin text-center w-full mb-2">
+       <div class="staking-timer-text">
+         {{ selectedOption === 'Staking' ? 'STAKING STARTS IN: ' : 'VESTING STARTS IN: ' }}{{ formattedTime }}
+       </div>
+     </div>
+     
+     <div v-if="isSDIVSelected && !isInputValidForStaking" 
+          class="staking-timer-container text-yellow-300 font-origin text-center w-full mb-2">
+       <div class="staking-timer-text">
+         SDIV PHASE 2: {{ formattedSdivTime }}
+       </div>
+     </div>
  
      <ConnectWalletButton v-if="!accountAddress" @connect="$emit('connect')" class="mb-6"/>
       <div v-else>
@@ -74,8 +89,8 @@
         </div>
         <button 
           @click="handleStakeClick" 
-          :disabled="loading || (selectedOption === 'Staking' && selectedToken === 'PPEPE')"
-          class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6 text-xs md:text-sm lg:text-lg">
+          :disabled="loading || (selectedOption === 'Staking' && selectedToken === 'PPEPE') || (timeRemaining > 0 && isInputValidForStaking)"
+          class="bg-gradient-to-r font-origin from-sky-600 to sky-900 hover:bg-button text-yellow-300 px-4 py-2 rounded-xl cursor-pointer text-lg font-semibold transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 mb-6 text-sm md:text-md lg:text-lg">
           <orbit-spinner v-if="loading" :animation-duration="1200" :size="25" color="#FDE047"></orbit-spinner>
           <span v-else>
             {{ stakeButtonText }}
@@ -89,11 +104,12 @@
  import ConnectWalletButton from './ConnectWalletButton.vue';
  import TokenInputCard from './TokenInputCard.vue';
  import { OrbitSpinner } from 'epic-spinners';
- import LPStakingABI from '../ABI/LPStakingABI.json';
- import TokenABI from '../ABI/IERC20.json';
- import VestingABI from '../ABI/VestingABI.json';
- import { ethers } from 'ethers';
- import { toHandlers } from 'vue';
+import LPStakingABI from '../ABI/LPStakingABI.json';
+import TokenABI from '../ABI/IERC20.json';
+import VestingABI from '../ABI/VestingABI.json';
+import { ethers } from 'ethers';
+import { toHandlers } from 'vue';
+import widgetAnalytics from '@/utils/widgetAnalytics';
  
  export default {
    name: 'ClaimCard',
@@ -156,7 +172,7 @@
           tokens: {
            ppepe: '0x98830a6cc6f8964cec4ffd65f19edebba6fef865',
            pepe: '0x6982508145454ce325ddbe47a25d4ec3d2311933',
-           shib: '0xfD1450a131599ff34f3Be1775D8c8Bf79E353D8c',
+           shib: '0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE',
           },
           lptokens: {
            ppepelp: '0x45a8d3a8bfa5b1ec496508d738f5b9e3bd2cb86d',
@@ -192,15 +208,22 @@
        loading: false,
        currencies: ['PPePe', 'PePe', 'Shib'],
        currencyLogos: [
-         require('@/assets/ppepe.png'),
-         require('@/assets/pepe.png'),
-         require('@/assets/shib.png')
+         require('@/assets/ppepe.webp'),
+         require('@/assets/pepe.webp'),
+         require('@/assets/shiba.webp')
        ],
        enteredAmountData: '0.00',
        walletBalanceData: '0.00',
        selectedOption: 'Staking',
        selectedSlot: null,
        showWarning: false,
+       timeRemaining: null,
+       timer: null,
+       launchDate: '2025-08-17T12:00:00',
+       endTime: new Date('2025-08-17T12:00:00').getTime(),
+       sdivPhase2Date: '2025-12-09T12:00:00',
+       sdivPhase2EndTime: new Date('2025-12-09T12:00:00').getTime(),
+       sdivTimeRemaining: null,
      };
    },
    computed: {
@@ -208,20 +231,38 @@
       const balance = this.lpTokenBalances[this.selectedToken.toLowerCase()];
       return !balance || balance === '0.00';
      },
+     isStakingPhaseActive() {
+       return this.timeRemaining > 0;
+     },
+     isInputValidForStaking() {
+       const amount = parseFloat(this.enteredAmountData);
+       return !isNaN(amount) && amount > 0;
+     },
      stakeLabel() {
        return this.selectedOption === 'Vesting' ? this.$t('message.youvest') : this.$t('message.youstake');
      },
      stakeButtonText() {
-      if (this.selectedOption === 'Staking') {
-        if (this.selectedToken === 'PPePe') {
-          return this.$t('message.sdivcomingsoon');
-        }
-        return this.$t('message.stakelp');
-      } else if (this.selectedOption === 'Vesting') {
-        return this.$t('message.vesttokens');
-      }
-      return '';
-    },
+       if (this.isSDIVSelected && this.isInputValidForStaking) {
+         return `SDIV PHASE 2: ${this.formattedSdivTime}`;
+       }
+       else if (this.isSDIVSelected) {
+         return this.$t('message.sdivcomingsoon');
+       }
+       
+       if (this.timeRemaining > 0 && this.isInputValidForStaking) {
+         return `STARTS IN ${this.formattedTime}`;
+       }
+
+       if (this.selectedOption === 'Staking') {
+         if (this.selectedToken === 'PPePe') {
+           return this.$t('message.sdivcomingsoon');
+         }
+         return this.$t('message.stakelp');
+       } else if (this.selectedOption === 'Vesting') {
+         return this.$t('message.vesttokens');
+       }
+       return '';
+     },
      selectedVestingContractAddress() {
        console.log("Vesting Contract Address: ", this.contractAddresses[this.currentNetwork].vesting[this.selectedToken]);
        return this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
@@ -248,6 +289,18 @@
        let formattedString = `${months} ${monthString} / ${days} ${dayString}`;
        return formattedString;
      },
+     formattedTime() {
+       if (this.timeRemaining <= 0) {
+         return '00D 00HR 00MIN 00SEC';
+       }
+       
+       const days = Math.floor(this.timeRemaining / (24 * 60 * 60 * 1000));
+       const hours = Math.floor((this.timeRemaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+       const minutes = Math.floor((this.timeRemaining % (60 * 60 * 1000)) / (60 * 1000));
+       const seconds = Math.floor((this.timeRemaining % (60 * 1000)) / 1000);
+       
+       return `${days.toString().padStart(2, '0')}D ${hours.toString().padStart(2, '0')}HR ${minutes.toString().padStart(2, '0')}MIN ${seconds.toString().padStart(2, '0')}SEC`;
+     },
      selectedCurrencyLogo() {
        let index = this.currencies.indexOf(this.selectedToken);
        return this.currencyLogos[index];
@@ -258,41 +311,50 @@
        if (this.selectedOption === 'Staking') {
          switch (this.selectedToken) {
            case 'PPePe':
-             //console.log("PrimordialPePeLP Balance: ", this.lpTokenBalances.ppepelp);
-             balance = this.ppepelpBalance;
+             balance = this.ppepelpBalance || '0';
              console.log("PPEPELP Balance: ", balance);
-             //balance = this.lpTokenBalances['ppepelp'];
              break;
            case 'PePe':
-             //console.log("PePeLP Balance: ", this.lpTokenBalances.pepelp);
-             balance = this.pepelpBalance;
-             console.log("PPEPELP Balance: ", balance);
-             //balance = this.lpTokenBalances['pepelp'];
+             balance = this.pepelpBalance || '0';
+             console.log("PEPELP Balance: ", balance);
              break;
            case 'Shib':
-             //console.log("ShibLP Balance: ", this.lpTokenBalances.shiblp);
-             balance = this.shiblpBalance;
+             balance = this.shiblpBalance || '0';
              console.log("SHIBLP Balance: ", balance);
-             //balance = this.lpTokenBalances['shiblp'];
              break;
          }
        } else {
          switch (this.selectedToken) {
            case 'PPePe':
              console.log("PPePe Balance: ", this.ppepeBalance);
-             balance = this.ppepeBalance;
+             balance = this.ppepeBalance || '0';
              break;
            case 'PePe':
              console.log("PePe Balance: ", this.pepeBalance);
-             balance = this.pepeBalance;
+             balance = this.pepeBalance || '0';
              break;
          case 'Shib':
            console.log("Shib Balance: ", this.shibBalance);
-           balance = this.shibBalance;
+           balance = this.shibBalance || '0';
            break;
          }
        } 
        return this.abbreviateNumber(balance);
+     },
+     isSDIVSelected() {
+       return this.selectedOption === 'Staking' && this.selectedToken === 'PPePe';
+     },
+     formattedSdivTime() {
+       if (this.sdivTimeRemaining <= 0) {
+         return '00D 00HR 00MIN 00SEC';
+       }
+       
+       const days = Math.floor(this.sdivTimeRemaining / (24 * 60 * 60 * 1000));
+       const hours = Math.floor((this.sdivTimeRemaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+       const minutes = Math.floor((this.sdivTimeRemaining % (60 * 60 * 1000)) / (60 * 1000));
+       const seconds = Math.floor((this.sdivTimeRemaining % (60 * 1000)) / 1000);
+       
+       return `${days.toString().padStart(2, '0')}D ${hours.toString().padStart(2, '0')}HR ${minutes.toString().padStart(2, '0')}MIN ${seconds.toString().padStart(2, '0')}SEC`;
      },
    },
    methods: {
@@ -308,6 +370,30 @@
         this.selectedSlot = zeroBasedSlot;
         this.showWarning = false;
       }
+     },
+     updateTimer() {
+       const now = new Date().getTime();
+       this.timeRemaining = Math.max(0, this.endTime - now);
+       this.sdivTimeRemaining = Math.max(0, this.sdivPhase2EndTime - now);
+       
+       if (this.timeRemaining <= 0) {
+         clearInterval(this.timer);
+         this.$emit('countdown-complete');
+       }
+     },
+     setEndTime(newEndTime) {
+       this.endTime = newEndTime;
+       this.updateTimer();
+     },
+     setLaunchDate(dateString) {
+       this.launchDate = dateString;
+       this.endTime = new Date(dateString).getTime();
+       this.updateTimer();
+     },
+     setSdivPhase2Date(dateString) {
+       this.sdivPhase2Date = dateString;
+       this.sdivPhase2EndTime = new Date(dateString).getTime();
+       this.updateTimer();
      },
      async fetchAndUpdateBalances() {
       const newBalances = {
@@ -329,6 +415,10 @@
       });
      },
      abbreviateNumber(value) {
+       if (value === null || value === undefined || value === '' || isNaN(parseFloat(value))) {
+         return '0.00';
+       }
+       
        let newValue = parseFloat(value);
        if (newValue >= 1e12) {
          return (newValue / 1e12).toFixed(2) + "T";
@@ -339,62 +429,56 @@
        } else if (newValue >= 1e3) {
          return (newValue / 1e3).toFixed(2) + "K";
        } else {
-         return newValue.toString();
+         return newValue.toFixed(2);
        }
      },
      async fetchTokenBalances() {
-       if (!this.accountAddress) {
-         console.error("No account address provided.");
-         return;
-       }
-       
-       const provider = new ethers.BrowserProvider(window.ethereum);
-       //console.log(`Current network: ${this.currentNetwork}`);
        try {
+         if (!this.accountAddress) {
+          //console.error("No account address provided.");
+          return;
+         }
+         
+         const provider = new ethers.BrowserProvider(window.ethereum);
+          //console.log(`Current network: ${this.currentNetwork}`);
+         
          for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].tokens)) {
-           //console.log(`Fetching balance for ${tokenName} at address ${tokenAddress}`);
-           if (!this.isValidAddress(tokenAddress)) {
-             console.error("Token contract address is invalid:", tokenAddress);
-             continue;
+           if (!this.isValidAddress(tokenAddress)) 
+           continue;
+           
+           try {
+             const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
+             const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
+             const balanceInEther = ethers.formatEther(balanceInWei);
+             this.tokenBalances[tokenName] = balanceInEther;
+           } catch (error) {
+             this.tokenBalances[tokenName] = '0.00';
            }
-           const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
-           const balanceInWei = await tokenContract.balanceOf(this.accountAddress).catch(err => {
-             console.error(`Error fetching balance for ${tokenName} at address ${tokenAddress}:`, err.message);
-             return null;
-           });
-           if (balanceInWei === null) continue;
-           const balanceInEther = ethers.formatEther(balanceInWei);
-           this.tokenBalances[tokenName] = balanceInEther;
-           //console.log(`${tokenName} balance: ${balanceInEther}`);
-           //console.log("TOKENBALANCE", this.tokenBalances);
          }
        } catch (error) {
-         console.error("Error fetching token balances:", error);
+         console.error("Critical error in fetchTokenBalances:", error);
        }
      },
      async fetchLPTokenBalances() {
-       if (!this.accountAddress) {
-         console.log("No account address provided.");
-         return;
-       }
-       const provider = new ethers.BrowserProvider(window.ethereum);
-       //console.log("Current Network: ", this.currentNetwork);
-       for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].lptokens)) {
-         try {
-           const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
-           //console.log("Token Contract Address:", tokenContract);
-           const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
-           //console.log("Token Contract:", tokenContract);
-           if (!balanceInWei || balanceInWei === '0x') {
-             console.log(`${tokenName} at ${tokenAddress} has no balance data or is not correctly deployed.`);
-             continue;
-           }
-           const balanceInEther = ethers.formatEther(balanceInWei);
-           this.lpTokenBalances[tokenName] = balanceInEther;
-           //console.log(`${tokenName} (${tokenAddress}) balance:`, this.lpTokenBalances[tokenName]);
-         } catch (error) {
-           console.error(`Error fetching balance for ${tokenName} at ${tokenAddress}:`, error);
+       try {
+         if (!this.accountAddress) {
+           return;
          }
+         
+         const provider = new ethers.BrowserProvider(window.ethereum);
+         
+         for (const [tokenName, tokenAddress] of Object.entries(this.contractAddresses[this.currentNetwork].lptokens)) {
+           try {
+             const tokenContract = new ethers.Contract(tokenAddress, this.erc20ABI, provider);
+             const balanceInWei = await tokenContract.balanceOf(this.accountAddress);
+             const balanceInEther = ethers.formatEther(balanceInWei);
+             this.lpTokenBalances[tokenName] = balanceInEther;
+           } catch (error) {
+             this.lpTokenBalances[tokenName] = '0.00';
+           }
+         }
+       } catch (error) {
+         console.error("Critical error in fetchLPTokenBalances:", error);
        }
      },
      adjustVestingPeriod() {
@@ -488,11 +572,12 @@
           contractAddress = this.contractAddresses[this.currentNetwork].vesting[this.selectedToken];
           contractABI = VestingABI;
           contractMethod = 'vestTokens';
-          if (this.vestingPeriod === 365) {
-            timeIndex = 11;
-          } else {
-            timeIndex = Math.round(this.vestingPeriod / 30) - 1;
-          }
+          // if (this.vestingPeriod === 365) {
+          //   timeIndex = 11;
+          // } else {
+          //   timeIndex = Math.round(this.vestingPeriod / 30) - 1;
+          // }
+          timeIndex = this.vestingPeriod === 365 ? 11 : Math.round(this.vestingPeriod / 30) - 1;
           tokenContractAddress = this.contractAddresses[this.currentNetwork].tokens[this.selectedToken.toLowerCase()];
         } else {
           console.error('Invalid option selected');
@@ -508,7 +593,7 @@
         console.log(`Using contract address: ${contractAddress} for ${this.selectedOption}`);
         const amountInWei = ethers.parseUnits(this.enteredAmountData, 18);
         const tokenContract = new ethers.Contract(tokenContractAddress, TokenABI, signer);
-        const approveTx = await tokenContract.approve(contractAddress, (amountInWei)); //+ 1000000000000000000n));
+        const approveTx = await tokenContract.approve(contractAddress, amountInWei);
         await approveTx.wait();
         console.log("Tokens approved");
 
@@ -520,13 +605,39 @@
         } else if (this.selectedOption === 'Vesting') {
           actionTx = await actionContract[contractMethod](amountInWei, timeIndex);
         }
-        await actionTx.wait();
+        const receipt = await actionTx.wait();
         console.log(`${this.selectedOption} action completed successfully`);
+        
+        widgetAnalytics.trackInteraction(this.selectedOption.toLowerCase(), true, {
+          amount: this.enteredAmountData,
+          token: this.selectedToken,
+          slotIndex: this.selectedOption === 'Staking' ? this.selectedSlot : null,
+          vestingPeriod: this.selectedOption === 'Vesting' ? this.vestingPeriod : null,
+          txHash: receipt.transactionHash,
+          gasUsed: receipt.gasUsed?.toString(),
+          blockNumber: receipt.blockNumber
+        });
+        
         this.$root.$refs.notificationCard.showNotification(this.selectedOption === 'Staking' ? "LPStakingSuccess" : "VestingSuccess", `${this.selectedOption} successfull`);
         this.loading = false;
       } catch (error) {
-        console.error("Error during action:", error);
-        this.$root.$refs.notificationCard.showNotification("error", `${this.selectedOption} action failed: ${error.message}`);
+        //console.error("Error during action:", error);
+        
+        widgetAnalytics.trackInteraction(this.selectedOption.toLowerCase(), false, {
+          error: error.message || error,
+          token: this.selectedToken,
+          amount: this.enteredAmountData,
+          slotIndex: this.selectedOption === 'Staking' ? this.selectedSlot : null,
+          vestingPeriod: this.selectedOption === 'Vesting' ? this.vestingPeriod : null,
+          errorCode: error.code
+        });
+        
+        const errorCode = error.code || (error.error && error.error.code);
+        if (errorCode === 4001 || errorCode === 'ACTION_REJECTED') {
+          this.$root.$refs.notificationCard.showNotification("error", `${this.selectedOption} Transaction Rejected`);
+        } else {
+          this.$root.$refs.notificationCard.showNotification("error", `${this.selectedOption} action failed: ${error.message}`);
+        }
         this.loading = false;
       }
      },
@@ -547,20 +658,41 @@
      }
    },
    mounted() {
-    this.detectNetwork();
+    try {
+      this.detectNetwork();
       if (window.ethereum) {
-        window.ethereum.on('accountsChanged', (accounts) => {
+        window.ethereum.on('accountsChanged', async (accounts) => {
           this.$emit('update:accountAddress', accounts[0]);
+          await Promise.all([
+            this.fetchLPTokenBalances(),
+            this.fetchTokenBalances()
+          ]);
+        });
+
+        window.ethereum.on('chainChanged', async () => {
+          await this.detectNetwork();
+          await Promise.all([
+            this.fetchLPTokenBalances(),
+            this.fetchTokenBalances()
+          ]);
+        });
+
+        this.subscribeToNewBlocks();
+        
+        if (this.accountAddress) {
           this.fetchLPTokenBalances();
           this.fetchTokenBalances();
-        });
-        window.ethereum.on('chainChanged', (_chainId) => {
-        window.location.reload(_chainId);
-        });
-        this.subscribeToNewBlocks();
-        this.fetchLPTokenBalances();
-        this.fetchTokenBalances();
+        }
       }
+      
+      this.updateTimer();
+      this.timer = setInterval(this.updateTimer, 1000);
+    } catch (error) {
+      console.error("Error in mounted:", error);
+    }
+   },
+   beforeUnmount() {
+     clearInterval(this.timer);
    },
    watch: {
      accountAddress(newVal, oldVal) {
@@ -640,4 +772,18 @@
    margin-left: 0;
    border: none;
  }
+
+.staking-timer-container {
+  font-weight: bold;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.countdown-ending {
+  animation: pulse 1s infinite;
+}
  </style>

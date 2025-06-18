@@ -1,0 +1,26 @@
+[build]
+  command = "npm run build"
+  publish = "widget-dist"
+  functions = "netlify/functions"
+
+[context.production]
+  command = "npm run build"
+  publish = "widget-dist"
+
+[context.webcomponent]
+  command = "npm run prepare:webcomponent"
+  publish = "widget-dist"
+
+[[headers]]
+  for = "/*"
+    [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, OPTIONS"
+    Access-Control-Allow-Headers = "X-Requested-With, content-type, Authorization"
+
+[[headers]]
+  for = "/.netlify/functions/*"
+    [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "X-Requested-With, content-type, Authorization"

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-left w-full max-w-[260px]">
+  <div class="flex items-center justify-left w-full max-w-[260px] sm:max-w-[300px] md:max-w-[340px] lg:max-w-[380px] xl:max-w-[420px]">
     <input
       type="text"
       placeholder="0"
@@ -92,9 +92,39 @@ export default {
 
 <style scoped>
 input {
-  max-width: 240px;
+  max-width: 100%;
   -webkit-appearance: textfield;
   -moz-appearance: textfield;
+}
+
+@media (min-width: 640px) {
+  input {
+    max-width: 340px;
+  }
+}
+
+@media (min-width: 768px) {
+  input {
+    max-width: 380px;
+  }
+}
+
+@media (min-width: 1024px) {
+  input {
+    max-width: 420px;
+  }
+}
+
+@media (min-width: 1280px) {
+  input {
+    max-width: 460px;
+  }
+}
+
+@media (min-width: 1536px) {
+  input {
+    max-width: 500px;
+  }
 }
 
 input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {

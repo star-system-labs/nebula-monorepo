@@ -1,0 +1,5 @@
+# Local Netlify folder
+.netlify
+
+# SSL Info Deck
+frontend/nebula-deck/
