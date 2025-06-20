@@ -34,7 +34,7 @@ export default {
       web3: null,
       timeRemaining: null,
       timer: null,
-      endTime: new Date('2025-04-30T12:00:00').getTime(),
+      endTime: new Date('2025-08-02T04:00:00').getTime(),
       isCountdownComplete: false
     };
   },

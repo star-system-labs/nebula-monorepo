@@ -73,8 +73,8 @@ module.exports = defineConfig({
   filenameHashing: process.env.BUILD_MODE !== 'webcomponent',
   
   chainWebpack: config => {
-      config.plugins.delete('copy')
-      
+    config.plugins.delete('copy')
+    
     if (process.env.BUILD_MODE === 'webcomponent') {
       config.plugin('html')
         .tap(args => {
@@ -91,6 +91,27 @@ module.exports = defineConfig({
               to: 'assets',
               noErrorOnMissing: true
             },
+            {
+              from: path.resolve(__dirname, 'public'),
+              to: '',
+              noErrorOnMissing: true,
+              globOptions: {
+                ignore: ['**/index.html']
+              }
+            }
+          ]
+        }])
+    } else {
+      config.plugin('html')
+        .tap(args => {
+          args[0].template = 'public/index.html'
+          args[0].title = 'Nebula'
+          return args
+        })
+        
+      config.plugin('copy-main-app')
+        .use(CopyWebpackPlugin, [{
+          patterns: [
             {
               from: path.resolve(__dirname, 'public'),
               to: '',

@@ -15,7 +15,7 @@
         @inputChanged="emitAmount" 
         ref="amountInput" 
         />
-      <div class="flex flex-col items-center justify-center">
+      <div class="flex flex-col items-center justify-center flex-shrink-0 ml-2">
         <img :src="currencyLogo" alt="Currency Logo" :class="logoClasses">
       </div>
     </div>
@@ -138,7 +138,7 @@ export default {
       }
     },
     logoClasses() {
-      const base = 'w-12 h-12';
+      const base = 'w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0';
       return this.currency === 'Shib' || this.currency.toLowerCase() === 'shiba'
         ? `${base} object-contain mr-1`
         : `${base} rounded-full mr-1`;
